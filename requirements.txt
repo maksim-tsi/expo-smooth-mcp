@@ -1,0 +1,10 @@
+# Core Libraries
+pandas
+statsmodels
+
+# UI & API
+gradio[mcp]
+uvicorn
+
+# Testing
+pytest
