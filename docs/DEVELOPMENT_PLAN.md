@@ -3,7 +3,7 @@
 
 - **Version:** 1.0
 - **Status:** Living
-- **Last Updated:** 2025-07-05 by Prof. M. Tsi
+- **Last Updated:** 2025-07-05 by Maksim Ilin
 - **Summary:** This document outlines the development phases, current project status, and immediate next steps for the `expo-smooth-mcp` project. It serves as a tactical roadmap to achieve the goals set in the `PROJECT_CHARTER.md`.
 
 ---
