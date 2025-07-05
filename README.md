@@ -2,7 +2,7 @@
 title: Exponential Smoothing for Supply Chain Forecasting
 emoji: 📈
 colorFrom: blue
-colorTo: teal
+colorTo: green
 sdk: gradio
 app_file: app.py
 python_version: 3.10
