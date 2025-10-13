@@ -5,7 +5,7 @@ This module contains pure functions with no dependencies on UI frameworks
 (Gradio, Streamlit) or web frameworks (FastAPI, Flask). It can be reused
 across different interface layers.
 """
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import pandas as pd
 import plotly.graph_objects as go
 from .forecasting import generate_forecast
@@ -19,7 +19,7 @@ def get_forecast_data(
     df: pd.DataFrame,
     sku: str,
     forecast_horizon: int = 90
-) -> Dict[str, List]:
+) -> Dict[str, Any]:
     """
     Generate forecast data for a specific SKU.
     
@@ -31,7 +31,36 @@ def get_forecast_data(
     Returns:
         Dictionary with keys: 'dates', 'actuals', 'forecast', 'metadata'
     """
-    pass
+    # Generate forecast using existing function
+    forecast_df = generate_forecast(df, sku, forecast_horizon)
+    
+    # Convert dates to ISO format strings
+    dates = [d.strftime('%Y-%m-%d') for d in forecast_df.index]
+    
+    # Convert actuals and forecast to lists, handling NaN values
+    actuals = forecast_df['actuals'].tolist()
+    forecast = forecast_df['forecast'].tolist()
+    
+    # Convert NaN to None for JSON compatibility
+    actuals = [None if pd.isna(x) else x for x in actuals]
+    
+    # Calculate metadata
+    historical_points = sum(1 for x in actuals if x is not None)
+    forecast_points = len(forecast) - historical_points
+    
+    metadata = {
+        'sku': sku,
+        'forecast_horizon': forecast_horizon,
+        'historical_points': historical_points,
+        'forecast_points': forecast_points
+    }
+    
+    return {
+        'dates': dates,
+        'actuals': actuals,
+        'forecast': forecast,
+        'metadata': metadata
+    }
 
 def get_available_skus(df: pd.DataFrame) -> List[str]:
     """
