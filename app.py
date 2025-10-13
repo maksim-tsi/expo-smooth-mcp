@@ -1,17 +1,15 @@
 import gradio as gr
 import pandas as pd
 import plotly.graph_objects as go
-from src.expo_smooth_mcp.preprocessing import preprocess_data
-from src.expo_smooth_mcp.forecasting import generate_forecast
+from src.expo_smooth_mcp import logic
 
 # --- 1. Initialization: Load and preprocess data once at startup ---
 try:
-    RAW_DF = pd.read_csv('FMCG_Sales.csv')
-    PROCESSED_DF = preprocess_data(RAW_DF.copy())
-    SKU_LIST = PROCESSED_DF.index.get_level_values('sku').unique().tolist()
-    print("Successfully loaded and preprocessed data.")
-except FileNotFoundError:
-    print("ERROR: FMCG_Sales.csv not found. Please ensure the dataset is in the root directory.")
+    PROCESSED_DF = logic.get_processed_data()
+    SKU_LIST = logic.get_available_skus(PROCESSED_DF)
+    print("Successfully loaded data via logic module.")
+except Exception as e:
+    print(f"ERROR: Failed to load data: {e}")
     # Create empty placeholders to allow the app to launch with an error message
     PROCESSED_DF = pd.DataFrame()
     SKU_LIST = []
@@ -21,7 +19,7 @@ except FileNotFoundError:
 def create_forecast_plot(sku: str) -> go.Figure:
     """
     Takes a SKU selected by the user, generates a forecast, and returns a Plotly figure.
-    This function is the core of the Gradio interface.
+    This function is now a thin wrapper that delegates to the logic module.
     """
     if not sku:
         # If no SKU is selected, return an empty plot with a message
@@ -40,40 +38,26 @@ def create_forecast_plot(sku: str) -> go.Figure:
         )
         return fig
 
-    try:
-        # Generate the forecast data
-        forecast_df = generate_forecast(PROCESSED_DF, sku, forecast_horizon=90)
-        
-        # Create an interactive plot with Plotly
+    if PROCESSED_DF.empty:
+        # If data failed to load, show error
         fig = go.Figure()
-
-        # Add the historical actuals trace
-        fig.add_trace(go.Scatter(
-            x=forecast_df.index, 
-            y=forecast_df['actuals'], 
-            mode='lines', 
-            name='Historical Sales',
-            line=dict(color='blue')
-        ))
-
-        # Add the forecast trace
-        fig.add_trace(go.Scatter(
-            x=forecast_df.index, 
-            y=forecast_df['forecast'], 
-            mode='lines', 
-            name='Forecasted Sales',
-            line=dict(color='red', dash='dash')
-        ))
-        
-        fig.update_layout(
-            title=f"Sales Forecast for SKU: {sku}",
-            xaxis_title="Date",
-            yaxis_title="Quantity Sold",
-            legend_title="Series"
-        )
-        
+        fig.update_layout(title_text="Error: Data failed to load. Please check FMCG_Sales.csv file.")
         return fig
 
+    try:
+        # Validate request using logic module
+        validation_error = logic.validate_forecast_request(sku, 90, SKU_LIST)
+        if validation_error:
+            fig = go.Figure()
+            fig.update_layout(title_text=f"Validation error: {validation_error}")
+            return fig
+        
+        # Generate forecast data using logic module
+        forecast_data = logic.get_forecast_data(PROCESSED_DF, sku, forecast_horizon=90)
+        
+        # Create visualization using logic module
+        return logic.create_forecast_plot(forecast_data)
+        
     except Exception as e:
         # Handle errors gracefully in the UI
         print(f"An error occurred: {e}")
