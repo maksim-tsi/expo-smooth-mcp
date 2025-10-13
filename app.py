@@ -16,6 +16,9 @@ from typing import Optional
 import pandas as pd
 import io
 
+# Import column analysis module
+from src.expo_smooth_mcp import column_analysis
+
 # --- Configuration ---
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
@@ -108,18 +111,18 @@ def _create_forecast_plot_from_data(forecast_data: dict) -> go.Figure:
 
 # --- File Processing Function ---
 
-def process_uploaded_file(file) -> tuple[Optional[pd.DataFrame], str, list]:
+def process_uploaded_file(file) -> tuple[Optional[pd.DataFrame], Optional[dict], str, list]:
     """
-    Process uploaded file and extract SKU list.
+    Process uploaded file, analyze columns, and extract SKU list.
     
     Args:
         file: Gradio File object (can be None)
         
     Returns:
-        Tuple of (DataFrame, status_message, sku_list)
+        Tuple of (DataFrame, analysis_dict, status_message, sku_list)
     """
     if file is None:
-        return None, "No file uploaded. Using default dataset.", SKU_LIST
+        return None, None, "No file uploaded. Using default dataset.", SKU_LIST
     
     try:
         file_path = file.name
@@ -133,32 +136,34 @@ def process_uploaded_file(file) -> tuple[Optional[pd.DataFrame], str, list]:
         elif file_ext == '.json':
             df = pd.read_json(file_path)
         else:
-            return None, f"❌ Unsupported file type: {file_ext}", SKU_LIST
+            return None, None, f"❌ Unsupported file type: {file_ext}", SKU_LIST
         
-        # Validate required columns
-        if 'date' not in df.columns or 'sales' not in df.columns:
-            return None, "❌ File must contain 'date' and 'sales' columns", SKU_LIST
+        # Analyze columns using the new column analysis module
+        analysis = column_analysis.analyze_columns(df)
         
-        # Map 'sales' column to 'quantity' for preprocessing compatibility
-        df_processed = df.copy()
-        df_processed['quantity'] = df_processed['sales']
-        df_processed = df_processed.drop('sales', axis=1)
+        # Create status message
+        status = f"✅ Loaded {len(df)} rows, {len(df.columns)} columns from {os.path.basename(file_path)}"
         
-        # Process data using logic layer
-        from src.expo_smooth_mcp import preprocessing, logic
-        processed_df = preprocessing.preprocess_data(df_processed)
+        # Add smart suggestions to status
+        if analysis['suggested_date'] and analysis['suggested_metric']:
+            status += f"\n💡 Auto-detected: Date={analysis['suggested_date']}, Metric={analysis['suggested_metric']}"
+            if analysis['suggested_product']:
+                status += f", Product={analysis['suggested_product']}"
+        else:
+            status += "\n⚠️ Could not auto-detect columns. Please select manually."
         
-        if processed_df is None or processed_df.empty:
-            return None, "❌ File processing failed. Check data format.", SKU_LIST
+        # Extract SKU list from uploaded data if product column detected
+        sku_list = []
+        if analysis['suggested_product']:
+            product_col = analysis['suggested_product']
+            if product_col in df.columns:
+                sku_list = df[product_col].dropna().unique().tolist()
+                sku_list = [str(sku) for sku in sku_list]  # Ensure string type
         
-        # Extract SKU list
-        skus = logic.get_available_skus(processed_df)
-        
-        status = f"✅ Loaded {len(processed_df)} rows, {len(skus)} SKUs from {os.path.basename(file_path)}"
-        return processed_df, status, skus
+        return df, analysis, status, sku_list
         
     except Exception as e:
-        return None, f"❌ Error processing file: {str(e)}", SKU_LIST
+        return None, None, f"❌ Error processing file: {str(e)}", SKU_LIST
 
 # --- Get SKU List ---
 
@@ -246,61 +251,102 @@ async def create_forecast_plot(sku: str) -> go.Figure:
 
 # --- Custom Data Forecast Function ---
 
-async def create_forecast_plot_with_custom_data(
+async def create_forecast_plot_with_mapping(
+    df: Optional[pd.DataFrame],
+    date_col: str,
+    metric_col: str,
+    product_col: Optional[str],
     sku: str,
-    horizon: int,
-    custom_df: Optional[pd.DataFrame]
+    horizon: int
 ) -> go.Figure:
     """
-    Generate forecast plot using custom data or default dataset.
+    Generate forecast plot using custom column mapping.
     
     Args:
-        sku: Product SKU code
+        df: Uploaded DataFrame (or None for default dataset)
+        date_col: Name of date column in user's data
+        metric_col: Name of metric column in user's data
+        product_col: Optional name of product ID column (or "(None)")
+        sku: Product SKU to forecast
         horizon: Forecast horizon in days
-        custom_df: Optional custom DataFrame from file upload
         
     Returns:
         Plotly figure with forecast visualization
     """
+    if df is None:
+        # Use default dataset via API
+        return await create_forecast_plot(sku)
+    
     try:
-        if custom_df is not None:
-            # Use custom data directly with logic layer
-            from src.expo_smooth_mcp import logic
-            
-            # Validate SKU exists
-            valid_skus = logic.get_available_skus(custom_df)
-            if sku not in valid_skus:
-                return _create_error_plot(
-                    f"SKU '{sku}' not found in uploaded data.\n"
-                    f"Available SKUs: {', '.join(valid_skus)}"
-                )
-            
-            # Generate forecast
-            forecast_data = logic.get_forecast_data(custom_df, sku, horizon)
-            return _create_forecast_plot_from_data(forecast_data)
+        # Handle "(None)" selection for product column
+        if product_col == "(None)":
+            product_col = None
         
-        else:
-            # Use existing API-based logic for default dataset
-            return await create_forecast_plot(sku)
-            
+        # Validate column mapping
+        validation = column_analysis.validate_column_mapping(
+            df, date_col, metric_col, product_col
+        )
+        
+        if not validation["valid"]:
+            error_msg = "❌ Invalid column mapping:\n" + "\n".join(validation["errors"])
+            return _create_error_plot(error_msg)
+        
+        # Show warnings if any
+        if validation["warnings"]:
+            print("⚠️ Warnings:", validation["warnings"])
+        
+        # Rename columns to expected format
+        df_mapped = df.copy()
+        df_mapped = df_mapped.rename(columns={
+            date_col: 'date',
+            metric_col: 'sales'
+        })
+        
+        if product_col:
+            df_mapped = df_mapped.rename(columns={product_col: 'sku'})
+        
+        # Map 'sales' column to 'quantity' for preprocessing compatibility
+        df_mapped['quantity'] = df_mapped['sales']
+        df_mapped = df_mapped.drop('sales', axis=1)
+        
+        # Process with existing logic
+        from src.expo_smooth_mcp import preprocessing, logic
+        processed_df = preprocessing.preprocess_data(df_mapped)
+        
+        if processed_df is None or processed_df.empty:
+            return _create_error_plot("❌ Data processing failed. Check data format.")
+        
+        # Validate SKU exists
+        valid_skus = logic.get_available_skus(processed_df)
+        if sku not in valid_skus:
+            return _create_error_plot(
+                f"❌ SKU '{sku}' not found.\nAvailable: {', '.join(valid_skus[:10])}"
+            )
+        
+        # Generate forecast
+        forecast_data = logic.get_forecast_data(processed_df, sku, horizon)
+        return _create_forecast_plot_from_data(forecast_data)
+        
     except Exception as e:
-        return _create_error_plot(f"Error generating forecast: {str(e)}")
+        return _create_error_plot(f"❌ Error generating forecast: {str(e)}")
 
 # --- Gradio UI Definition ---
 
 def create_gradio_interface():
-    """Create and configure the Gradio interface."""
+    """Create and configure the Gradio interface with column mapping."""
     
     with gr.Blocks(title="Sales Forecasting") as interface:
         gr.Markdown("# 📊 Sales Forecasting Application")
-        gr.Markdown("Upload your sales data or use the default dataset to generate forecasts.")
+        gr.Markdown("Upload your sales data to generate forecasts with exponential smoothing.")
         
-        # State to hold custom DataFrame
-        custom_data_state = gr.State(None)
+        # State variables
+        df_state = gr.State(None)
+        analysis_state = gr.State(None)
         
         with gr.Row():
             with gr.Column(scale=1):
-                gr.Markdown("### 1. Upload Your Data (Optional)")
+                # Step 1: File Upload
+                gr.Markdown("### 1️⃣ Upload Your Data")
                 file_upload = gr.File(
                     label="Upload CSV, Excel, or JSON",
                     file_types=[".csv", ".xlsx", ".xls", ".json"],
@@ -308,42 +354,93 @@ def create_gradio_interface():
                 )
                 upload_status = gr.Textbox(
                     label="Upload Status",
-                    value="Using default dataset (FMCG_Sales.csv)",
-                    interactive=False
+                    value="📁 No file uploaded. Using default dataset.",
+                    interactive=False,
+                    lines=3
                 )
                 
-                gr.Markdown("### 2. Select SKU")
+                # Step 2: Column Mapping (initially hidden)
+                with gr.Group(visible=False) as mapping_section:
+                    gr.Markdown("### 2️⃣ Map Your Data Columns")
+                    gr.Markdown("*Select which columns contain your date, metric, and product data.*")
+                    
+                    date_column = gr.Dropdown(
+                        label="📅 Date/Time Column",
+                        choices=[],
+                        info="Column containing dates or timestamps"
+                    )
+                    
+                    metric_column = gr.Dropdown(
+                        label="📈 Metric Column to Forecast",
+                        choices=[],
+                        info="Numeric column with values to forecast (sales, demand, quantity, etc.)"
+                    )
+                    
+                    product_column = gr.Dropdown(
+                        label="🏷️ Product ID Column (Optional)",
+                        choices=[],
+                        value=None,
+                        info="Column for grouping by product (SKU, Product ID, etc.)"
+                    )
+                
+                # Step 3: Select Product & Parameters
+                gr.Markdown("### 3️⃣ Select Product & Forecast Settings")
                 sku_dropdown = gr.Dropdown(
                     choices=SKU_LIST,
                     label="Product SKU",
                     value=SKU_LIST[0] if SKU_LIST else None
                 )
                 
-                gr.Markdown("### 3. Set Forecast Horizon")
                 horizon_slider = gr.Slider(
                     minimum=7,
                     maximum=365,
                     value=90,
                     step=1,
-                    label="Forecast Days"
+                    label="Forecast Horizon (days)"
                 )
                 
-                forecast_button = gr.Button("Generate Forecast", variant="primary")
+                forecast_button = gr.Button("🚀 Generate Forecast", variant="primary")
             
             with gr.Column(scale=2):
                 plot_output = gr.Plot(label="Forecast Visualization")
         
-        # File upload handler
-        file_upload.change(
+        # Event: File uploaded
+        file_upload.upload(
             fn=process_uploaded_file,
             inputs=[file_upload],
-            outputs=[custom_data_state, upload_status, sku_dropdown]
+            outputs=[df_state, analysis_state, upload_status, sku_dropdown]
+        ).then(
+            # Show mapping section and populate dropdowns
+            fn=lambda analysis: (
+                gr.update(visible=True),
+                gr.update(
+                    choices=analysis.get("all_columns", []) if analysis else [],
+                    value=analysis.get("suggested_date") if analysis else None
+                ),
+                gr.update(
+                    choices=analysis.get("all_columns", []) if analysis else [],
+                    value=analysis.get("suggested_metric") if analysis else None
+                ),
+                gr.update(
+                    choices=["(None)"] + (analysis.get("all_columns", []) if analysis else []),
+                    value=analysis.get("suggested_product") if analysis else None
+                )
+            ),
+            inputs=[analysis_state],
+            outputs=[mapping_section, date_column, metric_column, product_column]
         )
         
-        # Forecast generation handler
+        # Event: Generate forecast
         forecast_button.click(
-            fn=create_forecast_plot_with_custom_data,
-            inputs=[sku_dropdown, horizon_slider, custom_data_state],
+            fn=create_forecast_plot_with_mapping,
+            inputs=[
+                df_state,
+                date_column,
+                metric_column,
+                product_column,
+                sku_dropdown,
+                horizon_slider
+            ],
             outputs=[plot_output]
         )
     

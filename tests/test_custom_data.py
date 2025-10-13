@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 from src.expo_smooth_mcp.main import app
 
 # Import Gradio functions to test
-from app import process_uploaded_file, create_forecast_plot_with_custom_data
+from app import process_uploaded_file, create_forecast_plot_with_mapping
 
 
 # --- Test Fixtures ---
@@ -68,9 +68,10 @@ class TestGradioFileUpload:
 
     def test_process_no_file(self):
         """Test with no file uploaded."""
-        df, status, skus = process_uploaded_file(None)
+        df, analysis, status, skus = process_uploaded_file(None)
 
         assert df is None
+        assert analysis is None
         assert "No file uploaded" in status
         assert len(skus) > 0  # Should return default SKU list
 
@@ -86,9 +87,10 @@ class TestGradioFileUpload:
                 self.name = str(path)
 
         file_obj = MockFile(csv_file)
-        df, status, skus = process_uploaded_file(file_obj)
+        df, analysis, status, skus = process_uploaded_file(file_obj)
 
         assert df is not None
+        assert analysis is not None
         assert "✅" in status
         assert "SKU_TEST_001" in skus
         assert len(df) == 8
@@ -103,25 +105,28 @@ class TestGradioFileUpload:
                 self.name = str(path)
 
         file_obj = MockFile(txt_file)
-        df, status, skus = process_uploaded_file(file_obj)
+        df, analysis, status, skus = process_uploaded_file(file_obj)
 
         assert df is None
+        assert analysis is None
         assert "Unsupported file type" in status
 
     def test_process_missing_columns(self, tmp_path):
-        """Test CSV with missing required columns."""
+        """Test CSV with columns that cannot be auto-detected."""
         csv_file = tmp_path / "invalid.csv"
-        csv_file.write_text("timestamp,product,value\n2024-01-01,SKU001,100")
+        csv_file.write_text("name,category,count\nJohn,Doe,100")
 
         class MockFile:
             def __init__(self, path):
                 self.name = str(path)
 
         file_obj = MockFile(csv_file)
-        df, status, skus = process_uploaded_file(file_obj)
+        df, analysis, status, skus = process_uploaded_file(file_obj)
 
-        assert df is None
-        assert "must contain 'date' and 'sales'" in status
+        # New behavior: file is accepted but user must manually select columns
+        assert df is not None
+        assert analysis is not None
+        assert "Could not auto-detect columns" in status
 
 
 class TestGradioForecastWithCustomData:
@@ -140,10 +145,13 @@ class TestGradioForecastWithCustomData:
         processed_df = preprocessing.preprocess_data(df_processed)
 
         # Generate forecast (may fail with small dataset, that's OK)
-        fig = await create_forecast_plot_with_custom_data(
+        fig = await create_forecast_plot_with_mapping(
+            df=processed_df,
+            date_col='date',
+            metric_col='quantity',
+            product_col='sku',
             sku="SKU_TEST_001",
-            horizon=7,
-            custom_df=processed_df
+            horizon=7
         )
         assert fig is not None
         
@@ -167,10 +175,13 @@ class TestGradioForecastWithCustomData:
         from src.expo_smooth_mcp import preprocessing
         processed_df = preprocessing.preprocess_data(df_processed)
 
-        fig = await create_forecast_plot_with_custom_data(
+        fig = await create_forecast_plot_with_mapping(
+            df=processed_df,
+            date_col='date',
+            metric_col='quantity',
+            product_col='sku',
             sku="INVALID_SKU",
-            horizon=7,
-            custom_df=processed_df
+            horizon=7
         )
 
         # Should return error plot
@@ -330,7 +341,7 @@ class TestCustomDataIntegration:
                 self.name = str(path)
 
         file_obj = MockFile(csv_file)
-        df, status, skus = process_uploaded_file(file_obj)
+        df, analysis, status, skus = process_uploaded_file(file_obj)
 
         assert df is not None
         assert "SKU_TEST_001" in skus
@@ -338,10 +349,13 @@ class TestCustomDataIntegration:
         # 2. Verify forecast can be generated (df is already processed by process_uploaded_file)
         import asyncio
         try:
-            fig = asyncio.run(create_forecast_plot_with_custom_data(
+            fig = asyncio.run(create_forecast_plot_with_mapping(
+                df=df,
+                date_col='date',
+                metric_col='quantity',
+                product_col='sku',
                 sku="SKU_TEST_001",
-                horizon=7,
-                custom_df=df
+                horizon=7
             ))
             assert fig is not None
         except Exception as e:
