@@ -67,12 +67,22 @@ def get_available_skus(df: pd.DataFrame) -> List[str]:
     Get list of all product SKUs available for forecasting.
     
     Args:
-        df: Preprocessed DataFrame
+        df: Preprocessed DataFrame with MultiIndex (date, sku)
         
     Returns:
         Sorted list of unique SKU strings
+        Example: ['PRODUCT_001', 'PRODUCT_002', 'PRODUCT_123', ...]
+        
+    Raises:
+        ValueError: If DataFrame is empty or doesn't have 'sku' level in index
     """
-    pass
+    if df.empty:
+        raise ValueError("DataFrame is empty")
+    
+    if not isinstance(df.index, pd.MultiIndex) or 'sku' not in df.index.names:
+        raise ValueError("DataFrame must have MultiIndex with 'sku' level")
+    
+    return sorted(df.index.get_level_values('sku').unique().tolist())
 
 def create_forecast_plot(forecast_data: Dict[str, List]) -> go.Figure:
     """
