@@ -149,6 +149,41 @@ async def forecast_sku(
         print(f"ERROR in forecast_sku: {e}")
         raise RuntimeError(f"Forecast generation failed: {str(e)}")
 
+@mcp.tool()
+async def list_available_skus() -> List[str]:
+    """
+    List all product SKUs available for forecasting.
+
+    Use this tool to discover what products exist in the dataset before
+    requesting a forecast. Each SKU can be passed to the forecast_sku tool.
+
+    Returns:
+        List of product SKU codes, sorted alphabetically
+        Example: ["PRODUCT_001", "PRODUCT_002", "PRODUCT_123", ...]
+
+    Example:
+        skus = await list_available_skus()
+        print(f"Found {len(skus)} products")
+
+    Raises:
+        RuntimeError: If data failed to load on startup
+    """
+    # Check if data is loaded
+    if PROCESSED_DF is None:
+        raise RuntimeError(
+            "Data not loaded. Server started without valid dataset. "
+            "Check server logs for startup errors."
+        )
+
+    try:
+        # Get sorted list of SKUs
+        sku_list = logic.get_available_skus(PROCESSED_DF)
+        return sku_list
+
+    except Exception as e:
+        print(f"ERROR in list_available_skus: {e}")
+        raise RuntimeError(f"Failed to retrieve SKU list: {str(e)}")
+
 # --- REST API Endpoints ---
 # (Will be added in TASK-207, TASK-208, TASK-210)
 
