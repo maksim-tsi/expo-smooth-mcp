@@ -1,6 +1,6 @@
 # ADR 005: Support for User-Provided Data in Forecasting
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2025-10-13
 - **Deciders:** maksim-tsi, GitHub Copilot
 - **Stage:** 3A

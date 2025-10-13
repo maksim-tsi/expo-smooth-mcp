@@ -64,6 +64,66 @@ This demonstration uses a real-world public dataset to ensure the results are re
 *   **Link:** [https://www.kaggle.com/datasets/krishanukalita/fmcg-sales-demand-forecasting-and-optimization](https://www.kaggle.com/datasets/krishanukalita/fmcg-sales-demand-forecasting-and-optimization)
 *   **Description:** The dataset contains daily order quantities for various products across different warehouses, making it ideal for demonstrating time-series forecasting.
 
+## Custom Data Support
+
+The application now supports user-provided data for both interactive analysis and programmatic access. You can upload your own sales data through the Gradio web interface or use the MCP server for automated forecasting.
+
+### Supported File Formats
+
+- **CSV files** (.csv) - Comma-separated values
+- **Excel files** (.xlsx, .xls) - Microsoft Excel spreadsheets  
+- **JSON files** (.json) - JavaScript Object Notation
+
+### Data Format Requirements
+
+Your data file must contain the following columns:
+- **Date column**: Order dates (will be automatically detected and converted)
+- **Product/SKU column**: Product identifiers (strings)
+- **Quantity column**: Sales/order quantities (numeric values)
+
+**Example CSV format:**
+```csv
+date,sku,quantity
+2024-01-01,PRODUCT_A,100
+2024-01-02,PRODUCT_A,120
+2024-01-01,PRODUCT_B,50
+2024-01-02,PRODUCT_B,75
+```
+
+### Gradio Web Interface
+
+1. **Upload Your Data**: Use the file upload area in the Gradio interface to select and upload your CSV, Excel, or JSON file.
+2. **Automatic Processing**: The system will automatically detect your data format and extract available products/SKUs.
+3. **Generate Forecasts**: Select a product from the dropdown and specify your forecast horizon to generate predictions.
+
+### MCP Server Tool
+
+For programmatic access, use the `forecast_with_custom_data` MCP tool:
+
+**Tool Parameters:**
+- `file_data_base64`: Base64-encoded file content
+- `file_name`: Original filename (for format detection)
+- `sku`: Product/SKU identifier to forecast
+- `horizon`: Number of days to forecast
+
+**Size Limit**: Files must be under 100KB when Base64-encoded (approximately 66KB raw data).
+
+**Example Usage:**
+```python
+# Encode your CSV file to Base64
+import base64
+with open('my_sales_data.csv', 'rb') as f:
+    file_data = base64.b64encode(f.read()).decode('utf-8')
+
+# Call the MCP tool
+result = await forecast_with_custom_data(
+    file_data_base64=file_data,
+    file_name="my_sales_data.csv", 
+    sku="PRODUCT_A",
+    horizon=7
+)
+```
+
 ## Getting Started (Local Development)
 
 To set up and run this project on your local machine, please follow the instructions below.

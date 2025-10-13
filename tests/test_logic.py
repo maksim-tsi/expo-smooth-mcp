@@ -32,7 +32,7 @@ class TestGetProcessedData:
     def test_missing_file_raises_error(self):
         """Should raise FileNotFoundError for missing CSV."""
         with pytest.raises(FileNotFoundError, match="Data file not found"):
-            logic.get_processed_data('nonexistent.csv')
+            logic.get_processed_data('nonexistent.csv', force_reload=True)
 
     def test_force_reload_parameter(self):
         """Should accept force_reload parameter without error."""
