@@ -1,9 +1,9 @@
 # ADR 005: Support for User-Provided Data in Forecasting
 
-- **Status:** Accepted
-- **Date:** 2025-10-13
+- **Status:** Accepted (Extended in Phase 3B)
+- **Date:** 2025-10-13 (Extended: 2025-10-13)
 - **Deciders:** maksim-tsi, GitHub Copilot
-- **Stage:** 3A
+- **Stage:** 3A (Extended: 3B)
 
 ---
 
@@ -108,3 +108,238 @@ The primary challenge is defining a data ingestion method that is both user-frie
 - **Negative / Risks:**
     - MCP clients will face errors if they attempt to send files larger than the small, predefined limit. This risk is mitigated by returning a clear error message.
     - This introduces a "technical debt" of needing to implement the more robust Pattern B in the future. This is an accepted trade-off.
+
+---
+
+## Extension: Flexible Column Mapping (Phase 3B)
+
+**Date Extended:** October 13, 2025  
+**Context:** After implementing Phase 3A, user testing revealed that the rigid requirement for columns named exactly `date` and `sales` creates a poor user experience. Real-world supply chain datasets use varied column names like `timestamp`, `order_date`, `quantity`, `demand`, `revenue`, etc.
+
+### Additional Problem Statement
+
+**The "Column Name Rigidity" Problem:**
+
+Phase 3A successfully enables users to upload their own data, but it fails immediately if their columns aren't named exactly `date` and `sales`. This is impractical because:
+
+1. **Supply Chain datasets have diverse naming conventions:**
+   - Time columns: `date`, `timestamp`, `day`, `period`, `order_date`, `ds`
+   - Metric columns: `sales`, `quantity`, `demand`, `revenue`, `units_sold`, `orders`, `y`
+   - Identifier columns: `sku`, `product_id`, `item_id`, `product_code`
+
+2. **Users expect the tool to adapt to their data, not vice versa.**
+
+3. **Error messages like "File must contain 'date' and 'sales' columns" provide no guidance on how to fix the issue.**
+
+### Additional Decision Drivers
+
+1. **Usability:** The tool must work with common SCM column names without requiring users to rename columns.
+2. **Discoverability:** Users should understand what the tool needs from their data.
+3. **Lightweight:** The solution should not require ML models or complex NLP.
+4. **Consistency:** The solution must work for both Gradio UI and MCP protocol.
+
+### Considered Options for Column Mapping
+
+#### Option A: Automatic Column Renaming with Heuristics
+
+- **Description:** Automatically detect column types using simple pattern matching on column names and data types, then internally rename them to `date` and `sales`.
+- **Pros:**
+    - Zero user interaction required
+    - Works immediately for common cases
+    - Simple implementation
+- **Cons:**
+    - May guess wrong
+    - No user control
+    - Opaque behavior (users don't know what happened)
+
+#### Option B: Interactive Column Mapping UI
+
+- **Description:** After file upload, present dropdowns allowing users to explicitly map their columns to required roles (date, metric, product ID). Use heuristics to pre-populate smart suggestions.
+- **Pros:**
+    - User has full control
+    - Transparent process
+    - Handles edge cases
+    - Educational (users learn what the tool needs)
+- **Cons:**
+    - Requires one additional user interaction
+    - Slightly more complex UI
+
+#### Option C: Support Multiple Column Name Aliases
+
+- **Description:** Hardcode a list of acceptable column names (e.g., `date`, `timestamp`, `day` all work for the date column).
+- **Pros:**
+    - Simple implementation
+    - No UI changes needed
+- **Cons:**
+    - Never complete (always missing someone's column name)
+    - Still breaks with custom names
+    - No flexibility
+
+### Decision Outcome: Option B (Interactive Column Mapping) for Both Gradio and MCP
+
+**Rationale:**
+
+- **Option B provides the best balance** between automation and user control.
+- **Heuristics make it fast:** If our suggestions are correct, it's just 2 clicks.
+- **It's still lightweight:** No ML models, just string matching on column names.
+- **It's transparent:** Users understand exactly what's being forecast.
+- **It works for both interfaces:** Gradio gets dropdowns, MCP gets explicit parameters.
+
+### Implementation Plan (Stage 3B)
+
+#### Component 1: Column Analysis Module (`src/expo_smooth_mcp/column_analysis.py`)
+
+**New Module:** Create a lightweight column analyzer
+
+```python
+def analyze_columns(df: pd.DataFrame) -> dict:
+    """
+    Analyze DataFrame columns and suggest mappings.
+    
+    Returns:
+        {
+            "all_columns": [...],
+            "date_candidates": [...],
+            "metric_candidates": [...],
+            "product_candidates": [...],
+            "suggested_date": "...",
+            "suggested_metric": "...",
+            "suggested_product": "..."
+        }
+    """
+```
+
+**Detection Rules:**
+- **Date columns:** Check for keywords (`date`, `time`, `day`, `period`, `ds`) + validate parseability
+- **Metric columns:** Check numeric dtype + keywords (`sales`, `quantity`, `demand`, `revenue`, `units`, `value`, `y`)
+- **Product columns:** Check for keywords (`sku`, `product`, `item`, `id`)
+
+#### Component 2: Gradio UI Enhancement
+
+**New UI Flow:**
+1. User uploads file → Analysis runs automatically
+2. Show "Map Your Data" section with 3 dropdowns:
+   - 📅 Date/Time column (pre-selected with best guess)
+   - 📈 Metric column to forecast (pre-selected)
+   - 🏷️ Product ID column (optional, pre-selected)
+3. Display auto-detection hints
+4. User confirms/adjusts selections
+5. Generate forecast button enabled
+
+#### Component 3: MCP Tool Enhancement
+
+**Extend `forecast_with_custom_data` tool** to accept column mapping parameters:
+
+```python
+@mcp.tool()
+async def forecast_with_custom_data(
+    file_data_base64: str,
+    file_name: str,
+    sku: str,
+    forecast_horizon: int = 90,
+    date_column: str = "date",           # NEW: Allow custom mapping
+    metric_column: str = "sales",        # NEW: Allow custom mapping
+    product_column: Optional[str] = None # NEW: Allow custom mapping
+) -> dict:
+    """
+    Generate forecast using user-provided data with flexible column mapping.
+    
+    New Parameters:
+        date_column: Name of the date/time column in your data (default: "date")
+        metric_column: Name of the metric column to forecast (default: "sales")
+        product_column: Name of the product identifier column (default: None)
+    
+    Example:
+        # Data with columns: "OrderDate", "Product_Code", "Units_Sold"
+        result = await forecast_with_custom_data(
+            file_data_base64=data,
+            file_name="orders.csv",
+            sku="PROD123",
+            date_column="OrderDate",
+            metric_column="Units_Sold",
+            product_column="Product_Code"
+        )
+    """
+```
+
+**Column Validation:**
+- Verify specified columns exist in the uploaded data
+- Verify date column is parseable as datetime
+- Verify metric column is numeric
+- Provide clear error messages if validation fails
+
+#### Component 4: Backend Refactoring
+
+**Refactor forecasting functions** to accept column names as parameters:
+
+```python
+# Before (rigid):
+def generate_forecast(df):
+    df['date'] = pd.to_datetime(df['date'])
+    model = ExponentialSmoothing(df['sales'], ...)
+
+# After (flexible):
+def generate_forecast(
+    df, 
+    date_col='date', 
+    metric_col='sales',
+    product_col=None
+):
+    # Rename to expected format internally
+    df_work = df.copy()
+    df_work = df_work.rename(columns={
+        date_col: 'date',
+        metric_col: 'sales'
+    })
+    
+    if product_col:
+        df_work = df_work.rename(columns={product_col: 'sku'})
+    
+    # Rest of logic unchanged
+    df_work['date'] = pd.to_datetime(df_work['date'])
+    model = ExponentialSmoothing(df_work['sales'], ...)
+```
+
+### Implementation Tasks (Phase 3B)
+
+- **TASK-3B-01:** Create `column_analysis.py` module with heuristic detection (2h)
+- **TASK-3B-02:** Update Gradio UI with column mapping interface (2h)
+- **TASK-3B-03:** Extend MCP tool with column mapping parameters (1.5h)
+- **TASK-3B-04:** Refactor forecasting functions to accept column names (1.5h)
+- **TASK-3B-05:** Create comprehensive tests for column mapping (1.5h)
+- **TASK-3B-06:** Update documentation with column mapping examples (1h)
+
+**Total Estimated Time:** 9.5 hours
+
+### Why This Stays Lightweight
+
+| Aspect | Complexity | Implementation |
+|--------|-----------|----------------|
+| **Algorithm** | Very Simple | String matching on column names |
+| **Processing** | <100ms | Only analyzes column metadata |
+| **Dependencies** | Zero new | Uses existing pandas |
+| **Code Size** | ~250 lines | Small footprint |
+| **User Effort** | Minimal | 2 clicks if suggestions correct |
+
+### Extended Consequences
+
+**Additional Positive:**
+- Users can upload datasets with any reasonable column structure
+- Tool adapts to common SCM naming conventions
+- Works for both Gradio UI and MCP protocol
+- Backward compatible (default values maintain old behavior)
+
+**Additional Risks (Mitigated):**
+- Heuristics might guess wrong → **Mitigation:** User can override suggestions
+- Extra UI complexity → **Mitigation:** Suggestions minimize user effort
+- MCP clients need to specify mappings → **Mitigation:** Sensible defaults + clear documentation
+
+### Success Criteria
+
+**Phase 3B is successful if:**
+1. ✅ Users can upload data with common SCM column names without errors
+2. ✅ Heuristic suggestions are correct >80% of the time for standard datasets
+3. ✅ Both Gradio UI and MCP tool support column mapping
+4. ✅ Backward compatibility maintained (existing `date`/`sales` data still works)
+5. ✅ All tests pass (15+ new tests for mapping logic)
+6. ✅ Documentation includes examples for common column naming patterns
