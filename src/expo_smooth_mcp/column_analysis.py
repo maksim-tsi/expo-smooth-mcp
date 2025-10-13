@@ -22,8 +22,9 @@ DATE_KEYWORDS = [
 
 METRIC_KEYWORDS = [
     'sales', 'quantity', 'demand', 'revenue',
-    'units', 'value', 'amount', 'y', 'units_sold',
-    'order_quantity', 'qty', 'volume', 'orders'
+    'units', 'value', 'amount', 'units_sold',
+    'order_quantity', 'qty', 'volume', 'orders',
+    'sales_volume', 'volume_sales'
 ]
 
 PRODUCT_KEYWORDS = [
@@ -156,6 +157,7 @@ def _score_date_column(series: pd.Series, col_name_lower: str) -> float:
 
     # Check if data is parseable as datetime (0.5 points)
     # But only if it's not purely numeric (to avoid false positives with quantities)
+    # and only if values look like actual dates (not just small integers)
     if not pd.api.types.is_numeric_dtype(series):
         try:
             # Test on a sample to avoid processing large datasets
@@ -170,7 +172,22 @@ def _score_date_column(series: pd.Series, col_name_lower: str) -> float:
                 score += 0.5
         except Exception:
             pass
+    else:
+        # For numeric columns, only consider them as dates if they look like timestamps
+        # (not small integers like weekdays, categories, etc.)
+        try:
+            sample_size = min(100, len(series))
+            sample = series.head(sample_size)
 
+            # Check if values are in a reasonable range for dates/timestamps
+            # Small integers (0-100) are unlikely to be dates
+            if sample.max() > 1000:  # Likely timestamps or large date numbers
+                parsed = pd.to_datetime(sample, errors='coerce', unit='s')
+                valid_ratio = parsed.notna().sum() / len(sample)
+                if valid_ratio > 0.8:
+                    score += 0.5
+        except Exception:
+            pass
     return min(score, 1.0)
 def _score_metric_column(series: pd.Series, col_name_lower: str) -> float:
     """
@@ -194,6 +211,11 @@ def _score_metric_column(series: pd.Series, col_name_lower: str) -> float:
     # Most metrics should be non-negative
     if (series >= 0).mean() > 0.9:
         score += 0.2
+
+    # Bonus for high variance (metrics typically have many unique values)
+    unique_ratio = series.nunique() / len(series) if len(series) > 0 else 0
+    if unique_ratio > 0.5:  # More than 50% unique values
+        score += 0.1
 
     return min(score, 1.0)
 def _score_product_column(series: pd.Series, col_name_lower: str) -> float:

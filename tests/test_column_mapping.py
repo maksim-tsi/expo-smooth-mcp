@@ -136,21 +136,21 @@ class TestScoreMetricColumn:
 
     def test_score_metric_partial_match(self):
         """Test scoring with partial metric keyword match."""
-        series = pd.Series([100, 200, 300])
+        series = pd.Series([100, 200, 300])  # 3 unique out of 3 (100% unique)
         score = _score_metric_column(series, 'order_quantity')
-        assert score == 0.7  # 0.5 partial match + 0.2 non-negative
+        assert abs(score - 0.8) < 1e-10  # 0.5 partial match + 0.2 non-negative + 0.1 variance
 
     def test_score_metric_no_keyword_positive(self):
         """Test scoring with no keyword but positive values."""
-        series = pd.Series([100, 200, 300])
+        series = pd.Series([100, 200, 300])  # 3 unique out of 3 (100% unique)
         score = _score_metric_column(series, 'measurement')  # Not a keyword
-        assert score == 0.2  # 0.2 non-negative only
+        assert abs(score - 0.3) < 1e-10  # 0.2 non-negative + 0.1 variance
 
     def test_score_metric_negative_values(self):
         """Test scoring with negative values."""
-        series = pd.Series([-100, 200, 300])  # 2/3 non-negative (<90%)
+        series = pd.Series([-100, 200, 300])  # 2/3 non-negative (<90%), 3/3 unique (100%)
         score = _score_metric_column(series, 'sales')
-        assert score == 0.8  # 0.8 keyword exact match only (no non-negative bonus)
+        assert score == 0.9  # 0.8 keyword exact match + 0.1 variance (no non-negative bonus)
 
 
 class TestScoreProductColumn:
