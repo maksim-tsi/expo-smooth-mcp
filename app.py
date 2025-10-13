@@ -1,93 +1,236 @@
+# app.py - Refactored for API communication
+"""
+Gradio UI for Exponential Smoothing Forecasting.
+
+This version calls the FastAPI backend via HTTP instead of
+using business logic directly. It can run standalone or be
+mounted in the FastAPI application.
+"""
+
 import gradio as gr
-import pandas as pd
+import httpx
+import os
+import asyncio
 import plotly.graph_objects as go
-from src.expo_smooth_mcp import logic
+from typing import Optional
 
-# --- 1. Initialization: Load and preprocess data once at startup ---
-try:
-    PROCESSED_DF = logic.get_processed_data()
-    SKU_LIST = logic.get_available_skus(PROCESSED_DF)
-    print("Successfully loaded data via logic module.")
-except Exception as e:
-    print(f"ERROR: Failed to load data: {e}")
-    # Create empty placeholders to allow the app to launch with an error message
-    PROCESSED_DF = pd.DataFrame()
-    SKU_LIST = []
+# --- Configuration ---
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
+# --- Helper Functions ---
 
-# --- 2. Core Logic Function: Generate plot based on user input ---
-def create_forecast_plot(sku: str) -> go.Figure:
+def _create_empty_plot(message: str) -> go.Figure:
+    """Create empty plot with message."""
+    fig = go.Figure()
+    fig.update_layout(
+        title_text=message,
+        xaxis={"visible": False},
+        yaxis={"visible": False},
+        annotations=[{
+            "text": message,
+            "xref": "paper",
+            "yref": "paper",
+            "showarrow": False,
+            "font": {"size": 20}
+        }]
+    )
+    return fig
+
+def _create_error_plot(error_message: str) -> go.Figure:
+    """Create error plot with message."""
+    fig = go.Figure()
+    fig.update_layout(
+        title_text="Error",
+        xaxis={"visible": False},
+        yaxis={"visible": False},
+        annotations=[{
+            "text": error_message,
+            "xref": "paper",
+            "yref": "paper",
+            "showarrow": False,
+            "font": {"size": 16, "color": "red"}
+        }]
+    )
+    return fig
+
+def _create_forecast_plot_from_data(forecast_data: dict) -> go.Figure:
+    """Create forecast plot from API response data."""
+    # Extract data from API response
+    dates = forecast_data["dates"]
+    actuals = forecast_data["actuals"]
+    forecast = forecast_data["forecast"]
+    metadata = forecast_data["metadata"]
+
+    # Create figure
+    fig = go.Figure()
+
+    # Add historical data (actuals that are not None)
+    historical_dates = [d for d, a in zip(dates, actuals) if a is not None]
+    historical_values = [a for a in actuals if a is not None]
+
+    if historical_dates:
+        fig.add_trace(go.Scatter(
+            x=historical_dates,
+            y=historical_values,
+            mode='lines+markers',
+            name='Historical Sales',
+            line=dict(color='blue', width=2),
+            marker=dict(size=5)
+        ))
+
+    # Add forecast data (where actuals are None)
+    forecast_dates = [d for d, a in zip(dates, actuals) if a is None]
+    forecast_values = forecast[len(historical_values):]  # Take remaining forecast values
+
+    if forecast_dates:
+        fig.add_trace(go.Scatter(
+            x=forecast_dates,
+            y=forecast_values,
+            mode='lines+markers',
+            name='Forecast',
+            line=dict(color='red', width=2, dash='dash'),
+            marker=dict(size=5, symbol='x')
+        ))
+
+    # Update layout
+    fig.update_layout(
+        title_text=f"Sales Forecast for {metadata['sku']}",
+        xaxis_title="Date",
+        yaxis_title="Sales",
+        hovermode='x unified',
+        template='plotly_white',
+        height=500
+    )
+
+    return fig
+
+# --- Get SKU List ---
+
+def get_sku_list() -> list:
     """
-    Takes a SKU selected by the user, generates a forecast, and returns a Plotly figure.
-    This function is now a thin wrapper that delegates to the logic module.
+    Fetch SKU list from API.
+
+    For Gradio initialization, we need the SKU list synchronously.
+    This function attempts to get it from the API, falls back to
+    loading data directly if API is not available.
+    """
+    try:
+        # Try to get SKU list from API root endpoint
+        with httpx.Client(timeout=5.0) as client:
+            response = client.get(f"{API_BASE_URL}/")
+            if response.status_code == 200:
+                data = response.json()
+                sku_count = data.get("sku_count", 0)
+                if sku_count > 0:
+                    # For now, we need to load locally for dropdown
+                    # TODO: Add GET /api/skus endpoint in future
+                    from src.expo_smooth_mcp import logic
+                    df = logic.get_processed_data()
+                    if df is not None:
+                        return logic.get_available_skus(df)
+
+        return []
+
+    except Exception as e:
+        print(f"⚠ Warning: Could not fetch SKU list: {e}")
+        print(f"  Make sure API is running at {API_BASE_URL}")
+        return []
+
+# Initialize SKU list
+SKU_LIST = get_sku_list()
+
+# --- Main Forecast Function ---
+
+async def create_forecast_plot(sku: str) -> go.Figure:
+    """
+    Generate forecast plot by calling FastAPI backend.
+
+    This function makes HTTP requests to the REST API instead of
+    calling business logic directly. This allows Gradio to work as a
+    standalone client of the FastAPI service.
+
+    Args:
+        sku: Product SKU code to forecast
+
+    Returns:
+        Plotly figure with forecast visualization
     """
     if not sku:
-        # If no SKU is selected, return an empty plot with a message
-        fig = go.Figure()
-        fig.update_layout(
-            title_text="Please select a product SKU to view its forecast",
-            xaxis={"visible": False},
-            yaxis={"visible": False},
-            annotations=[{
-                "text": "No data to display.",
-                "xref": "paper",
-                "yref": "paper",
-                "showarrow": False,
-                "font": {"size": 20}
-            }]
-        )
-        return fig
-
-    if PROCESSED_DF.empty:
-        # If data failed to load, show error
-        fig = go.Figure()
-        fig.update_layout(title_text="Error: Data failed to load. Please check FMCG_Sales.csv file.")
-        return fig
+        return _create_empty_plot("Please select a product SKU")
 
     try:
-        # Validate request using logic module
-        validation_error = logic.validate_forecast_request(sku, 90, SKU_LIST)
-        if validation_error:
-            fig = go.Figure()
-            fig.update_layout(title_text=f"Validation error: {validation_error}")
-            return fig
-        
-        # Generate forecast data using logic module
-        forecast_data = logic.get_forecast_data(PROCESSED_DF, sku, forecast_horizon=90)
-        
-        # Create visualization using logic module
-        return logic.create_forecast_plot(forecast_data)
-        
+        # Call FastAPI forecast endpoint
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"{API_BASE_URL}/api/forecast",
+                json={"sku": sku, "forecast_horizon": 90}
+            )
+            response.raise_for_status()
+
+            # Parse response
+            forecast_data = response.json()
+
+            # Create plot from data
+            return _create_forecast_plot_from_data(forecast_data)
+
+    except httpx.HTTPStatusError as e:
+        # API returned error status (400, 404, 500, etc.)
+        try:
+            error_detail = e.response.json().get("detail", str(e))
+        except:
+            error_detail = str(e)
+        return _create_error_plot(f"API Error: {error_detail}")
+
+    except httpx.RequestError as e:
+        # Network error (API not reachable)
+        return _create_error_plot(
+            f"Cannot connect to API at {API_BASE_URL}\n"
+            f"Make sure the FastAPI server is running.\n"
+            f"Error: {str(e)}"
+        )
+
     except Exception as e:
-        # Handle errors gracefully in the UI
-        print(f"An error occurred: {e}")
-        fig = go.Figure()
-        fig.update_layout(title_text=f"Error generating forecast for {sku}: {e}")
-        return fig
+        # Unexpected error
+        return _create_error_plot(f"Unexpected error: {str(e)}")
 
+# --- Gradio UI Definition ---
 
-# --- 3. UI Definition: Create and launch the Gradio Interface ---
 demo = gr.Interface(
     fn=create_forecast_plot,
     inputs=[
         gr.Dropdown(
-            choices=SKU_LIST,
+            choices=SKU_LIST if SKU_LIST else ["No SKUs available"],
             label="Select Product SKU",
-            info="Choose a product to forecast its sales for the next 90 days."
+            info="Choose a product to forecast its sales for the next 90 days.",
+            value=SKU_LIST[0] if SKU_LIST else None
         )
     ],
-    outputs=[
-        gr.Plot(label="Forecast Visualization")
-    ],
+    outputs=[gr.Plot(label="Forecast Visualization")],
     title="📈 Supply Chain Demand Forecasting",
-    description="An interactive demo of Exponential Smoothing for FMCG sales data. This application showcases a statistical model served via a Gradio interface.",
-    allow_flagging="never"
+    description=(
+        "An interactive demonstration of Exponential Smoothing for FMCG sales forecasting. "
+        "This interface connects to the FastAPI backend to generate predictions."
+    ),
+    allow_flagging="never",
+    theme=gr.themes.Soft()
 )
 
+# --- Main Entry Point ---
+
 if __name__ == "__main__":
-    if PROCESSED_DF.empty:
-        print("Could not start the app because the data failed to load.")
-    else:
-        # To enable the MCP server, we would add mcp_server=True
-        # For now, we launch the UI only.
-        demo.launch()
+    # Standalone mode - launch Gradio on its own port
+    print("=" * 60)
+    print("🚀 Launching Gradio UI (Standalone Mode)")
+    print("=" * 60)
+    print(f"API Base URL: {API_BASE_URL}")
+    print(f"SKUs Available: {len(SKU_LIST)}")
+    print()
+    print("⚠️  Important: Make sure FastAPI server is running!")
+    print("   Start it with: python -m src.expo_smooth_mcp.main --transport http --port 8000")
+    print("=" * 60)
+
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=False
+    )
