@@ -185,7 +185,97 @@ async def list_available_skus() -> List[str]:
         raise RuntimeError(f"Failed to retrieve SKU list: {str(e)}")
 
 # --- REST API Endpoints ---
-# (Will be added in TASK-207, TASK-208, TASK-210)
+
+@app.get("/")
+async def root():
+    """
+    Service information and API documentation.
+
+    Returns metadata about the Expo Smooth MCP Server including
+    available endpoints, version, and usage instructions.
+    """
+    return {
+        "name": APP_NAME,
+        "version": APP_VERSION,
+        "description": APP_DESCRIPTION,
+        "status": "operational",
+        "endpoints": {
+            "health": {
+                "path": "/health",
+                "method": "GET",
+                "description": "Health check endpoint"
+            },
+            "mcp_tools": {
+                "path": "/mcp",
+                "method": "POST",
+                "description": "MCP protocol endpoint (SSE transport)",
+                "tools": ["forecast_sku", "list_available_skus"]
+            },
+            "rest_api": {
+                "path": "/api/forecast",
+                "method": "POST",
+                "description": "REST API for forecasting"
+            },
+            "documentation": {
+                "path": "/docs",
+                "method": "GET",
+                "description": "OpenAPI/Swagger documentation"
+            }
+        },
+        "usage": {
+            "mcp_clients": "Connect via MCP protocol at /mcp endpoint",
+            "rest_clients": "POST to /api/forecast with JSON payload",
+            "web_ui": "Visit /gradio for interactive interface (Phase 3)"
+        },
+        "data_status": "loaded" if PROCESSED_DF is not None else "not_loaded",
+        "sku_count": len(logic.get_available_skus(PROCESSED_DF)) if PROCESSED_DF is not None else 0
+    }
+
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint for monitoring and load balancers.
+
+    Returns health status of the service including data loading status.
+    Used by monitoring systems, load balancers, and container orchestrators.
+
+    Returns:
+        200 OK: Service is healthy (data loaded)
+        503 Service Unavailable: Service unhealthy (data not loaded)
+
+    Response format:
+        {
+            "status": "healthy" | "unhealthy",
+            "timestamp": "2024-01-15T10:30:00Z",
+            "version": "2.0.0",
+            "data_loaded": true | false,
+            "sku_count": 3
+        }
+    """
+    from datetime import datetime
+
+    # Check if data is loaded
+    data_loaded = PROCESSED_DF is not None
+    sku_count = len(logic.get_available_skus(PROCESSED_DF)) if data_loaded else 0
+
+    # Determine health status
+    is_healthy = data_loaded
+    status_code = 200 if is_healthy else 503
+
+    # Prepare response
+    response = {
+        "status": "healthy" if is_healthy else "unhealthy",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "version": APP_VERSION,
+        "data_loaded": data_loaded,
+        "sku_count": sku_count
+    }
+
+    # Return appropriate HTTP status
+    return JSONResponse(
+        content=response,
+        status_code=status_code
+    )
 
 # --- Mount MCP Server ---
 
@@ -226,5 +316,66 @@ async def startup_event():
 # --- Main Entry Point ---
 
 if __name__ == "__main__":
-    # Dual-transport support will be added in TASK-209
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description=f"{APP_NAME} - Dual-transport MCP server"
+    )
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http"],
+        default="http",
+        help="Transport mode: stdio for local MCP clients, http for production server (default: http)"
+    )
+    parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host to bind HTTP server (default: 0.0.0.0)"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port for HTTP server (default: 8000)"
+    )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="Enable auto-reload for development (HTTP mode only)"
+    )
+    
+    args = parser.parse_args()
+    
+    if args.transport == "stdio":
+        # --- stdio Transport (Local MCP Clients) ---
+        print(f"{APP_NAME} v{APP_VERSION} - stdio mode", file=sys.stderr)
+        print("Ready for MCP communication via stdin/stdout", file=sys.stderr)
+        
+        # Load data synchronously for stdio mode
+        try:
+            PROCESSED_DF = logic.get_processed_data()
+            sku_count = len(logic.get_available_skus(PROCESSED_DF))
+            print(f"✓ Loaded data: {sku_count} SKUs", file=sys.stderr)
+        except Exception as e:
+            print(f"✗ ERROR: Failed to load data: {e}", file=sys.stderr)
+            sys.exit(1)
+        
+        # Run MCP server in stdio mode
+        import asyncio
+        asyncio.run(mcp.run_stdio_async(show_banner=False))
+        
+    else:
+        # --- HTTP Transport (Production Server) ---
+        print(f"{APP_NAME} v{APP_VERSION} - HTTP mode")
+        print(f"Starting server at http://{args.host}:{args.port}")
+        print(f"MCP endpoint: http://{args.host}:{args.port}/mcp")
+        print(f"API docs: http://{args.host}:{args.port}/docs")
+        
+        # Run FastAPI server with uvicorn
+        uvicorn.run(
+            "src.expo_smooth_mcp.main:app",
+            host=args.host,
+            port=args.port,
+            reload=args.reload,
+            log_level="info"
+        )
