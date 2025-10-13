@@ -167,6 +167,29 @@ This section is for the core team using the pre-configured `tsi` conda environme
 
 </details>
 
+## Documentation
+
+### Project Planning & Specifications
+- **[Project Roadmap](docs/PROJECT_ROADMAP.md)** - Timeline, status tracking, and milestones
+- **[Technical Specification](docs/SPECIFICATION.md)** - Complete technical reference for all 65 tasks (~21,000 lines)
+- **[Phase Implementation Guides](docs/implementation/)** - Focused guides for each development phase
+- **[Project Charter](docs/PROJECT_CHARTER.md)** - Project goals, requirements, and scope
+
+### Technical Documentation
+- **[Architecture Decision Records (ADRs)](ADRs/)** - Key architectural decisions
+- **[Test Plan](docs/TEST_PLAN.md)** - Comprehensive testing strategy
+- **[Data Preprocessing](docs/DATA_PREPROCESSING.md)** - Data pipeline documentation
+
+### Development Guides  
+- **[Phase 1: Decouple Logic](docs/implementation/PHASE_1_IMPLEMENTATION.md)** - Extract business logic
+- *(Additional phase guides to be created as needed)*
+
+### Current Status
+📋 **Specification Complete** - All 65 tasks fully specified, ready for implementation  
+⏸️ **Implementation** - Phase 1 specification complete, implementation ready to begin
+
+See [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md) for detailed status and timeline.
+
 ## Contribution
 
 Contributions to this research project are welcome. Please feel free to fork the repository, create a new branch for your feature or bug fix, and submit a Pull Request.

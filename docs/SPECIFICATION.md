@@ -1,10 +1,16 @@
 
-# Development Plan & Project Status
+# Expo Smooth MCP - Technical Specification
 
 - **Version:** 2.0
-- **Status:** Living
+- **Status:** Living Document
 - **Last Updated:** 2025-10-13
-- **Summary:** This document outlines the development phases, granular atomic tasks, and implementation roadmap for migrating `expo-smooth-mcp` from Gradio prototype to production-grade FastMCP + FastAPI architecture. Each task is designed to be completable by an experienced Python developer in ≤2 hours.
+- **Purpose:** Complete technical specification for the expo-smooth-mcp project
+- **Summary:** This document provides comprehensive technical specifications for all 65 tasks required to migrate `expo-smooth-mcp` from Gradio prototype to production-grade FastMCP + FastAPI architecture. Each task includes detailed implementation steps, code examples, testing procedures, and acceptance criteria. Use this as the authoritative reference for "what" needs to be built.
+
+**Related Documents:**
+- [Project Roadmap](PROJECT_ROADMAP.md) - High-level timeline and status tracking
+- [Phase Implementation Guides](implementation/) - Focused guides for each development phase
+- [Project Charter](PROJECT_CHARTER.md) - Project goals and requirements
 
 ---
 
@@ -15716,7 +15722,9 @@ See [Test Plan](docs/TEST_PLAN.md) for complete testing strategy.
 
 ## 📖 Documentation
 
-- [Development Plan](docs/DEVELOPMENT_PLAN.md) - Complete implementation roadmap
+- [Project Roadmap](docs/PROJECT_ROADMAP.md) - Timeline, status, and milestones
+- [Technical Specification](docs/SPECIFICATION.md) - Complete technical reference
+- [Phase Implementation Guides](docs/implementation/) - Step-by-step guides per phase
 - [Docker MCP Toolkit Guide](docs/DOCKER_MCP_TOOLKIT_GUIDE.md) - Local deployment
 - [Fly.io Deployment](docs/FLY_IO_DEPLOYMENT.md) - Cloud deployment
 - [Client Integration](docs/CLIENT_INTEGRATION_GUIDE.md) - MCP client setup

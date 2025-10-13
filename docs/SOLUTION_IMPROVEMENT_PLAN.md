@@ -376,7 +376,8 @@ app = gr.mount_gradio_app(app, gradio_ui, path="/gradio")
 
 - ⏳ **[README.md](../README.md)** - Add new architecture section
 - ⏳ **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Replace HF Spaces with Fly.io
-- ⏳ **[DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)** - Update Phase 2 status
+- ✅ **[SPECIFICATION.md](./SPECIFICATION.md)** - Complete technical specification (formerly DEVELOPMENT_PLAN.md)
+- ✅ **[PROJECT_ROADMAP.md](./PROJECT_ROADMAP.md)** - Timeline and status tracking
 
 ---
 
