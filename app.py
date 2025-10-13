@@ -13,6 +13,8 @@ import os
 import asyncio
 import plotly.graph_objects as go
 from typing import Optional
+import pandas as pd
+import io
 
 # --- Configuration ---
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
@@ -104,6 +106,60 @@ def _create_forecast_plot_from_data(forecast_data: dict) -> go.Figure:
 
     return fig
 
+# --- File Processing Function ---
+
+def process_uploaded_file(file) -> tuple[Optional[pd.DataFrame], str, list]:
+    """
+    Process uploaded file and extract SKU list.
+    
+    Args:
+        file: Gradio File object (can be None)
+        
+    Returns:
+        Tuple of (DataFrame, status_message, sku_list)
+    """
+    if file is None:
+        return None, "No file uploaded. Using default dataset.", SKU_LIST
+    
+    try:
+        file_path = file.name
+        file_ext = os.path.splitext(file_path)[1].lower()
+        
+        # Read file based on extension
+        if file_ext == '.csv':
+            df = pd.read_csv(file_path)
+        elif file_ext in ['.xlsx', '.xls']:
+            df = pd.read_excel(file_path)
+        elif file_ext == '.json':
+            df = pd.read_json(file_path)
+        else:
+            return None, f"❌ Unsupported file type: {file_ext}", SKU_LIST
+        
+        # Validate required columns
+        if 'date' not in df.columns or 'sales' not in df.columns:
+            return None, "❌ File must contain 'date' and 'sales' columns", SKU_LIST
+        
+        # Map 'sales' column to 'quantity' for preprocessing compatibility
+        df_processed = df.copy()
+        df_processed['quantity'] = df_processed['sales']
+        df_processed = df_processed.drop('sales', axis=1)
+        
+        # Process data using logic layer
+        from src.expo_smooth_mcp import preprocessing, logic
+        processed_df = preprocessing.preprocess_data(df_processed)
+        
+        if processed_df is None or processed_df.empty:
+            return None, "❌ File processing failed. Check data format.", SKU_LIST
+        
+        # Extract SKU list
+        skus = logic.get_available_skus(processed_df)
+        
+        status = f"✅ Loaded {len(processed_df)} rows, {len(skus)} SKUs from {os.path.basename(file_path)}"
+        return processed_df, status, skus
+        
+    except Exception as e:
+        return None, f"❌ Error processing file: {str(e)}", SKU_LIST
+
 # --- Get SKU List ---
 
 def get_sku_list() -> list:
@@ -188,27 +244,113 @@ async def create_forecast_plot(sku: str) -> go.Figure:
         # Unexpected error
         return _create_error_plot(f"Unexpected error: {str(e)}")
 
+# --- Custom Data Forecast Function ---
+
+async def create_forecast_plot_with_custom_data(
+    sku: str,
+    horizon: int,
+    custom_df: Optional[pd.DataFrame]
+) -> go.Figure:
+    """
+    Generate forecast plot using custom data or default dataset.
+    
+    Args:
+        sku: Product SKU code
+        horizon: Forecast horizon in days
+        custom_df: Optional custom DataFrame from file upload
+        
+    Returns:
+        Plotly figure with forecast visualization
+    """
+    try:
+        if custom_df is not None:
+            # Use custom data directly with logic layer
+            from src.expo_smooth_mcp import logic
+            
+            # Validate SKU exists
+            valid_skus = logic.get_available_skus(custom_df)
+            if sku not in valid_skus:
+                return _create_error_plot(
+                    f"SKU '{sku}' not found in uploaded data.\n"
+                    f"Available SKUs: {', '.join(valid_skus)}"
+                )
+            
+            # Generate forecast
+            forecast_data = logic.get_forecast_data(custom_df, sku, horizon)
+            return _create_forecast_plot_from_data(forecast_data)
+        
+        else:
+            # Use existing API-based logic for default dataset
+            return await create_forecast_plot(sku)
+            
+    except Exception as e:
+        return _create_error_plot(f"Error generating forecast: {str(e)}")
+
 # --- Gradio UI Definition ---
 
-demo = gr.Interface(
-    fn=create_forecast_plot,
-    inputs=[
-        gr.Dropdown(
-            choices=SKU_LIST if SKU_LIST else ["No SKUs available"],
-            label="Select Product SKU",
-            info="Choose a product to forecast its sales for the next 90 days.",
-            value=SKU_LIST[0] if SKU_LIST else None
+def create_gradio_interface():
+    """Create and configure the Gradio interface."""
+    
+    with gr.Blocks(title="Sales Forecasting") as interface:
+        gr.Markdown("# 📊 Sales Forecasting Application")
+        gr.Markdown("Upload your sales data or use the default dataset to generate forecasts.")
+        
+        # State to hold custom DataFrame
+        custom_data_state = gr.State(None)
+        
+        with gr.Row():
+            with gr.Column(scale=1):
+                gr.Markdown("### 1. Upload Your Data (Optional)")
+                file_upload = gr.File(
+                    label="Upload CSV, Excel, or JSON",
+                    file_types=[".csv", ".xlsx", ".xls", ".json"],
+                    type="filepath"
+                )
+                upload_status = gr.Textbox(
+                    label="Upload Status",
+                    value="Using default dataset (FMCG_Sales.csv)",
+                    interactive=False
+                )
+                
+                gr.Markdown("### 2. Select SKU")
+                sku_dropdown = gr.Dropdown(
+                    choices=SKU_LIST,
+                    label="Product SKU",
+                    value=SKU_LIST[0] if SKU_LIST else None
+                )
+                
+                gr.Markdown("### 3. Set Forecast Horizon")
+                horizon_slider = gr.Slider(
+                    minimum=7,
+                    maximum=365,
+                    value=90,
+                    step=1,
+                    label="Forecast Days"
+                )
+                
+                forecast_button = gr.Button("Generate Forecast", variant="primary")
+            
+            with gr.Column(scale=2):
+                plot_output = gr.Plot(label="Forecast Visualization")
+        
+        # File upload handler
+        file_upload.change(
+            fn=process_uploaded_file,
+            inputs=[file_upload],
+            outputs=[custom_data_state, upload_status, sku_dropdown]
         )
-    ],
-    outputs=[gr.Plot(label="Forecast Visualization")],
-    title="📈 Supply Chain Demand Forecasting",
-    description=(
-        "An interactive demonstration of Exponential Smoothing for FMCG sales forecasting. "
-        "This interface connects to the FastAPI backend to generate predictions."
-    ),
-    allow_flagging="never",
-    theme=gr.themes.Soft()
-)
+        
+        # Forecast generation handler
+        forecast_button.click(
+            fn=create_forecast_plot_with_custom_data,
+            inputs=[sku_dropdown, horizon_slider, custom_data_state],
+            outputs=[plot_output]
+        )
+    
+    return interface
+
+# Create the interface
+demo = create_gradio_interface()
 
 # --- Main Entry Point ---
 
