@@ -6,6 +6,7 @@ forecasting. It provides three interfaces:
 
 1. MCP Tools (stdio and HTTP/SSE transports)
    - forecast_sku: Generate forecast for a specific product
+   - forecast_with_custom_data: Generate forecast using user-provided data (Base64)
    - list_available_skus: Get all available product codes
 
 2. REST API Endpoints
@@ -45,9 +46,13 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from fastmcp import FastMCP
 import uvicorn
+import base64
+import io
+import os
+import pandas as pd
 
 # Import business logic layer
-from . import logic
+from . import logic, preprocessing
 
 # --- Pydantic Models ---
 
@@ -80,6 +85,11 @@ APP_DESCRIPTION = (
     "Production MCP server for exponential smoothing forecasting. "
     "Supports both stdio and HTTP/SSE transports."
 )
+
+# --- Size Limits ---
+
+# Maximum Base64 string size for custom data (100KB = ~66KB original file)
+MAX_BASE64_SIZE = 100 * 1024  # 100KB
 
 # --- Global State ---
 
@@ -250,6 +260,162 @@ async def list_available_skus() -> List[str]:
     except Exception as e:
         print(f"ERROR in list_available_skus: {e}")
         raise RuntimeError(f"Failed to retrieve SKU list: {str(e)}")
+
+@mcp.tool()
+async def forecast_with_custom_data(
+    file_data_base64: str,
+    file_name: str,
+    sku: str,
+    forecast_horizon: int = 90
+) -> dict:
+    """
+    Generate sales forecast using user-provided data.
+
+    This tool allows you to forecast on your own sales data by encoding
+    the file content as Base64 and passing it directly in the request.
+
+    **IMPORTANT SIZE LIMITATION:**
+    Due to client payload constraints, this tool supports files up to ~66KB
+    (100KB Base64-encoded). For larger files, use the Gradio UI or wait for
+    the two-step upload feature in a future release.
+
+    **Required Data Format:**
+    Your data must contain at minimum:
+    - 'date' column: Date/timestamp for each observation
+    - 'sales' column: Sales values (numeric)
+    - 'sku' column: Product identifier (if multiple products)
+
+    Supported formats: CSV, Excel (.xlsx, .xls), JSON
+
+    Args:
+        file_data_base64: Base64-encoded file content (max 100KB)
+        file_name: Original filename (used to detect format)
+        sku: Product SKU code to forecast
+        forecast_horizon: Number of days to forecast (default: 90, range: 7-365)
+
+    Returns:
+        Forecast data with historical and predicted values:
+        {
+            "sku": "PRODUCT_123",
+            "dates": ["2024-01-01", ...],
+            "actuals": [100.5, 105.2, ...],
+            "forecast": [110.1, 112.3, ...],
+            "metadata": {
+                "forecast_horizon": 90,
+                "data_points": 365,
+                "model_type": "ExponentialSmoothing"
+            }
+        }
+
+    Example Usage:
+        # Python client example
+        import base64
+
+        with open("my_sales.csv", "rb") as f:
+            file_bytes = f.read()
+            file_base64 = base64.b64encode(file_bytes).decode('utf-8')
+
+        result = await forecast_with_custom_data(
+            file_data_base64=file_base64,
+            file_name="my_sales.csv",
+            sku="PRODUCT_001",
+            forecast_horizon=90
+        )
+
+    Raises:
+        ValueError: If file too large, invalid format, or SKU not found
+        RuntimeError: If data processing fails
+    """
+    try:
+        # Validate Base64 size
+        base64_size = len(file_data_base64)
+        if base64_size > MAX_BASE64_SIZE:
+            size_kb = base64_size / 1024
+            max_kb = MAX_BASE64_SIZE / 1024
+            raise ValueError(
+                f"File too large: {size_kb:.1f}KB (max {max_kb:.0f}KB). "
+                f"Original file should be <66KB. "
+                f"For larger files, use the Gradio UI at /gradio"
+            )
+
+        # Decode Base64
+        try:
+            file_bytes = base64.b64decode(file_data_base64)
+        except Exception as e:
+            raise ValueError(f"Invalid Base64 encoding: {str(e)}")
+
+        # Detect file format from filename
+        file_ext = os.path.splitext(file_name)[1].lower()
+
+        # Read data into DataFrame
+        try:
+            file_buffer = io.BytesIO(file_bytes)
+
+            if file_ext == '.csv':
+                df = pd.read_csv(file_buffer)
+            elif file_ext in ['.xlsx', '.xls']:
+                df = pd.read_excel(file_buffer)
+            elif file_ext == '.json':
+                df = pd.read_json(file_buffer)
+            else:
+                raise ValueError(
+                    f"Unsupported file format: {file_ext}. "
+                    f"Supported: .csv, .xlsx, .xls, .json"
+                )
+        except Exception as e:
+            raise ValueError(f"Failed to parse file: {str(e)}")
+
+        # Validate required columns
+        required_cols = ['date', 'sales']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            raise ValueError(
+                f"Missing required columns: {missing_cols}. "
+                f"File must contain: {required_cols}"
+            )
+
+        # Map 'sales' to 'quantity' for preprocessing compatibility
+        df_processed = df.copy()
+        df_processed['quantity'] = df_processed['sales']
+        df_processed = df_processed.drop('sales', axis=1)
+
+        # Preprocess data
+        processed_df = preprocessing.preprocess_data(df_processed)
+        if processed_df is None or processed_df.empty:
+            raise ValueError(
+                "Data preprocessing failed. Check that 'date' column contains "
+                "valid dates and 'sales' column contains numeric values."
+            )
+
+        # Validate SKU exists
+        valid_skus = logic.get_available_skus(processed_df)
+        if sku not in valid_skus:
+            raise ValueError(
+                f"SKU '{sku}' not found in data. "
+                f"Available SKUs: {', '.join(valid_skus[:10])}"
+                f"{'...' if len(valid_skus) > 10 else ''}"
+            )
+
+        # Validate forecast horizon
+        logic.validate_forecast_request(sku, forecast_horizon, valid_skus)
+
+        # Generate forecast
+        forecast_data = logic.get_forecast_data(
+            processed_df,
+            sku,
+            forecast_horizon
+        )
+
+        return forecast_data
+
+    except ValueError as e:
+        # Re-raise validation errors
+        raise ValueError(f"Custom data forecast failed: {str(e)}")
+
+    except Exception as e:
+        # Log unexpected errors
+        print(f"ERROR in forecast_with_custom_data: {e}")
+        raise RuntimeError(f"Forecast generation failed: {str(e)}")
 
 # --- REST API Endpoints ---
 
