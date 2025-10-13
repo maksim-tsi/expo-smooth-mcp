@@ -144,14 +144,33 @@ def validate_forecast_request(
     Validate forecast request parameters.
     
     Args:
-        sku: Requested SKU
-        forecast_horizon: Requested horizon
-        valid_skus: List of available SKUs
+        sku: Product SKU to forecast
+        forecast_horizon: Number of days to forecast ahead
+        valid_skus: List of available SKUs from get_available_skus()
         
     Returns:
         Error message string if invalid, None if valid
+        
+    Example:
+        >>> validate_forecast_request('PRODUCT_123', 90, ['PRODUCT_001', 'PRODUCT_123'])
+        None  # Valid
+        >>> validate_forecast_request('INVALID', 90, ['PRODUCT_001', 'PRODUCT_123'])
+        "SKU 'INVALID' not found. Available SKUs: ['PRODUCT_001', 'PRODUCT_123']"
     """
-    pass
+    # Type validation
+    if not isinstance(forecast_horizon, int):
+        return f"forecast_horizon must be integer, got {type(forecast_horizon).__name__}"
+    
+    # Range validation
+    if not (1 <= forecast_horizon <= 365):
+        return f"Forecast horizon must be between 1 and 365 days, got {forecast_horizon}"
+    
+    # SKU existence validation
+    if sku not in valid_skus:
+        available_str = valid_skus[:5] if len(valid_skus) > 5 else valid_skus
+        return f"SKU '{sku}' not found. Available SKUs: {available_str}"
+    
+    return None
 
 def get_processed_data() -> pd.DataFrame:
     """
