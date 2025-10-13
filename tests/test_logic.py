@@ -36,9 +36,12 @@ class TestGetProcessedData:
 
     def test_force_reload_parameter(self):
         """Should accept force_reload parameter without error."""
-        # This will fail due to missing file, but should not fail due to parameter
-        with pytest.raises(FileNotFoundError):
-            logic.get_processed_data(force_reload=True)
+        # Test that force_reload works with existing file (should not raise error)
+        df1 = logic.get_processed_data()
+        df2 = logic.get_processed_data(force_reload=True)
+        # Both should succeed and return data
+        assert df1 is not None
+        assert df2 is not None
 
 class TestGetAvailableSkus:
     """Tests for get_available_skus() function."""

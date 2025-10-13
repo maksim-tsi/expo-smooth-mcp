@@ -92,8 +92,27 @@ PROCESSED_DF = None  # Will be loaded on startup
 @app.on_event("startup")
 async def startup_event():
     """Initialize application on startup."""
+    global PROCESSED_DF
+    
     print(f"Starting {APP_NAME} v{APP_VERSION}")
-    # Data loading will be added in TASK-203
+    
+    try:
+        # Load and cache data using singleton pattern
+        PROCESSED_DF = logic.get_processed_data()
+        sku_count = len(logic.get_available_skus(PROCESSED_DF))
+        
+        print(f"✓ Data loaded successfully")
+        print(f"✓ Found {sku_count} unique SKUs")
+        print(f"✓ Ready to serve requests")
+        
+    except FileNotFoundError as e:
+        print(f"✗ ERROR: Data file not found: {e}")
+        print("✗ Server will start but forecast endpoints will fail")
+        # Don't crash - allow health checks to work
+        
+    except Exception as e:
+        print(f"✗ ERROR: Failed to load data: {e}")
+        print("✗ Server will start but forecast endpoints will fail")
 
 # --- Main Entry Point ---
 
