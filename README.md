@@ -184,6 +184,8 @@ This section is for the core team using the pre-configured `tsi` conda environme
 - **[Phase 1: Decouple Logic](docs/implementation/PHASE_1_IMPLEMENTATION.md)** - Extract business logic
 - **[Phase 2: FastMCP Backend](docs/implementation/PHASE_2_IMPLEMENTATION.md)** - Build MCP server with dual-transport
 - **[Phase 2: Code Review](docs/PHASE_2_CODE_REVIEW.md)** - Comprehensive code review and validation
+- **[Phase 3: Mount Gradio UI](docs/implementation/PHASE_3_IMPLEMENTATION.md)** - Integrate Gradio web interface
+- **[Phase 3: Quick Start](docs/implementation/PHASE_3_QUICKSTART.md)** - Quick reference for Phase 3
 
 ### Claude Desktop Integration
 - **[Claude Desktop Test Report](docs/CLAUDE_DESKTOP_TEST_REPORT.md)** - Complete validation test results
@@ -192,7 +194,7 @@ This section is for the core team using the pre-configured `tsi` conda environme
 ### Current Status
 ✅ **Phase 1 Complete** - Business logic extracted and validated (27/27 tests passing)  
 ✅ **Phase 2 Complete** - FastMCP backend deployed and validated with Claude Desktop  
-📋 **Phase 3 Ready** - Gradio UI integration (next phase)
+📋 **Phase 3 Ready** - Gradio UI integration documentation complete, ready to implement
 
 See [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md) for detailed status and timeline.
 
