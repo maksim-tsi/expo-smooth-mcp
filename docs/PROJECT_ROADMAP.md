@@ -14,17 +14,18 @@
 | **Phase 2:** FastMCP Backend | 12 | 20h | ✅ Complete | 100% |
 | **Phase 3:** Mount Gradio | 6 | 8h | ✅ Complete | 100% |
 | **Phase 3A:** Custom Data Support | 4 | 7h | ✅ Complete | 100% |
+| **Phase 3B:** Column Mapping | 6 | 9.5h | ⏸️ Ready | 0% |
 | **Phase 4:** Deployment | 8 | 9h | ⏸️ Ready | 0% |
 | **Phase 5:** Production | 14 | 22h | ⏸️ Ready | 0% |
 | **Phase 6:** Documentation | 10 | 16h | ⏸️ Ready | 0% |
-| **TOTAL** | **62** | **94h** | - | **59%** |
+| **TOTAL** | **68** | **103.5h** | - | **54%** |
 
 ---
 
 ## Project Timeline
 
 ### Current Sprint
-**🎯 Next Up:** Phase 4 - Docker MCP Toolkit Deployment
+**🎯 Next Up:** Phase 3B - Intelligent Column Mapping
 
 ### Completed Milestones
 - ✅ **2025-10-10:** Phase 1 specification complete
@@ -40,8 +41,11 @@
 - ✅ **2025-10-13:** Phase 3A specification complete
 - ✅ **2025-10-13:** Phase 3A implementation complete (custom data support)
 - ✅ **2025-10-13:** Phase 3A code review complete (17 tests, all passing)
+- ✅ **2025-10-13:** ADR 005 extended (flexible column mapping)
+- ✅ **2025-10-13:** Phase 3B specification complete (column mapping)
 
 ### Upcoming Milestones
+- ⏳ **TBD:** Phase 3B implementation complete (intelligent column mapping)
 - ⏳ **TBD:** Phase 4 implementation complete (Docker MCP + Fly.io)
 - ⏳ **TBD:** Phase 5 implementation complete (production-ready)
 - ⏳ **TBD:** Phase 6 implementation complete (fully documented)
@@ -119,6 +123,49 @@
 - Mount Gradio → Update paths → Add auth → Cross-link → Testing
 
 **Implementation Guide:** [Phase 3 Implementation](implementation/PHASE_3_IMPLEMENTATION.md) *(to be created)*
+
+---
+
+### Phase 3B: Intelligent Column Mapping ⏸️
+**Duration:** ~9.5 hours (6 tasks)  
+**Status:** Specification complete, ready for implementation  
+**Dependencies:** Phase 3A complete
+
+**Objective:** Enable automatic column detection and flexible mapping to work with diverse data formats commonly found in supply chain management.
+
+**Key Deliverables:**
+- Lightweight column analysis module with heuristic detection
+- Interactive column mapping UI in Gradio
+- Extended MCP tool with column mapping parameters
+- Refactored backend for column flexibility
+- Comprehensive test suite (15+ tests)
+- Updated documentation
+
+**Key Features:**
+- 🔍 Automatic column type detection (date, metric, product)
+- 🎯 Smart suggestions based on common SCM naming patterns
+- 🎨 Interactive dropdowns for manual column selection
+- 🔧 MCP tool accepts custom column names
+- ⚡ Lightweight heuristics (<100ms analysis)
+- ✅ >80% accuracy on standard SCM datasets
+- 🔄 Backward compatible with existing data
+
+**Column Detection:**
+- **Date columns:** `date`, `timestamp`, `order_date`, `period`, `ds`, etc.
+- **Metric columns:** `sales`, `quantity`, `demand`, `revenue`, `units_sold`, etc.
+- **Product columns:** `sku`, `product_id`, `item_id`, `product_code`, etc.
+
+**Tasks:**
+- TASK-3B-01: Create column analysis module (2h)
+- TASK-3B-02: Update Gradio UI with mapping interface (2h)
+- TASK-3B-03: Extend MCP tool with column parameters (1.5h)
+- TASK-3B-04: Refactor backend for flexibility (1.5h)
+- TASK-3B-05: Create comprehensive test suite (1.5h)
+- TASK-3B-06: Update documentation (1h)
+
+**Implementation Guide:** [Phase 3B Implementation](implementation/PHASE_3B_IMPLEMENTATION.md)  
+**Quick Start:** [Phase 3B Quick Start](implementation/PHASE_3B_QUICKSTART.md)  
+**Architecture Decision:** [ADR 005 Extension](../ADRs/005-support-user-provided-data.md)
 
 ---
 
