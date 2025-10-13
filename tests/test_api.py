@@ -35,7 +35,7 @@ class TestRootEndpoint:
         data = response.json()
 
         endpoints = data["endpoints"]
-        required_endpoints = ["health", "mcp_tools", "rest_api", "documentation"]
+        required_endpoints = ["health", "mcp_tools", "rest_api", "gradio_ui", "documentation"]
         for endpoint in required_endpoints:
             assert endpoint in endpoints
             assert "path" in endpoints[endpoint]

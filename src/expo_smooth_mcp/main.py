@@ -283,6 +283,11 @@ async def root():
                 "method": "POST",
                 "description": "REST API for forecasting"
             },
+            "gradio_ui": {
+                "path": "/gradio",
+                "method": "GET",
+                "description": "Interactive Gradio web interface"
+            },
             "documentation": {
                 "path": "/docs",
                 "method": "GET",
@@ -395,6 +400,50 @@ async def api_forecast(request: ForecastRequest):
 app.mount("/mcp", mcp.http_app())
 
 print(f"✓ Mounted MCP server at /mcp with HTTP transport")
+
+# --- Mount Gradio UI (Backward Compatibility) ---
+
+try:
+    import gradio as gr
+
+    # Import the Gradio demo from app.py
+    # Note: This requires app.py to not auto-launch when imported
+    print("📊 Loading Gradio UI...")
+
+    # Temporarily set API_BASE_URL for Gradio
+    # When mounted, Gradio should call same-origin APIs
+    import os
+    original_api_url = os.getenv("API_BASE_URL")
+    os.environ["API_BASE_URL"] = "http://localhost:8000"  # Same origin
+
+    from app import demo as gradio_demo
+
+    # Restore original if it existed
+    if original_api_url:
+        os.environ["API_BASE_URL"] = original_api_url
+    else:
+        os.environ.pop("API_BASE_URL", None)
+
+    # Mount Gradio at /gradio path
+    app = gr.mount_gradio_app(
+        app,                    # FastAPI app
+        gradio_demo,            # Gradio Interface
+        path="/gradio"          # Mount path
+    )
+
+    print("✅ Mounted Gradio UI at /gradio")
+    print("   Access at: http://localhost:8000/gradio")
+
+except ImportError as e:
+    print(f"⚠️  Warning: Could not import Gradio: {e}")
+    print("   Continuing without Gradio UI...")
+    print("   Install with: pip install gradio")
+
+except Exception as e:
+    print(f"⚠️  Warning: Failed to mount Gradio UI: {e}")
+    print("   Continuing without Gradio interface...")
+    import traceback
+    traceback.print_exc()
 
 # --- Main Entry Point ---
 
