@@ -108,32 +108,27 @@ def _create_forecast_plot_from_data(forecast_data: dict) -> go.Figure:
 
 def get_sku_list() -> list:
     """
-    Fetch SKU list from API.
+    Fetch SKU list for Gradio dropdown initialization.
 
     For Gradio initialization, we need the SKU list synchronously.
-    This function attempts to get it from the API, falls back to
-    loading data directly if API is not available.
+    When mounted in FastAPI, the API isn't listening yet during import,
+    so we load data directly from the logic layer.
     """
     try:
-        # Try to get SKU list from API root endpoint
-        with httpx.Client(timeout=5.0) as client:
-            response = client.get(f"{API_BASE_URL}/")
-            if response.status_code == 200:
-                data = response.json()
-                sku_count = data.get("sku_count", 0)
-                if sku_count > 0:
-                    # For now, we need to load locally for dropdown
-                    # TODO: Add GET /api/skus endpoint in future
-                    from src.expo_smooth_mcp import logic
-                    df = logic.get_processed_data()
-                    if df is not None:
-                        return logic.get_available_skus(df)
-
-        return []
+        # When mounted in FastAPI, load data directly
+        # (API isn't listening yet during import)
+        from src.expo_smooth_mcp import logic
+        df = logic.get_processed_data()
+        if df is not None:
+            skus = logic.get_available_skus(df)
+            print(f"✓ Loaded {len(skus)} SKUs for Gradio dropdown")
+            return skus
+        else:
+            print(f"⚠ Warning: No data available for SKU list")
+            return []
 
     except Exception as e:
         print(f"⚠ Warning: Could not fetch SKU list: {e}")
-        print(f"  Make sure API is running at {API_BASE_URL}")
         return []
 
 # Initialize SKU list
