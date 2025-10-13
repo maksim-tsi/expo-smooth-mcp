@@ -3,15 +3,19 @@ import pytest
 from fastapi.testclient import TestClient
 from src.expo_smooth_mcp import main
 
-# Initialize data before creating TestClient
-main.PROCESSED_DF = main.logic.get_processed_data()
-
-client = TestClient(main.app)
+# Create TestClient with raise_server_exceptions=True to see lifespan errors
+# Note: TestClient now automatically handles lifespan in context manager mode
+# We need to use it as a context manager or fixture
+@pytest.fixture(scope="module")
+def client():
+    """Create test client that properly runs lifespan events."""
+    with TestClient(main.app) as test_client:
+        yield test_client
 
 class TestRootEndpoint:
     """Tests for / endpoint."""
 
-    def test_root_returns_service_info(self):
+    def test_root_returns_service_info(self, client):
         """Should return service metadata."""
         response = client.get("/")
         assert response.status_code == 200
@@ -24,7 +28,7 @@ class TestRootEndpoint:
         assert "data_status" in data
         assert "sku_count" in data
 
-    def test_root_includes_all_endpoints(self):
+    def test_root_includes_all_endpoints(self, client):
         """Should document all available endpoints."""
         response = client.get("/")
         assert response.status_code == 200
@@ -38,7 +42,7 @@ class TestRootEndpoint:
             assert "method" in endpoints[endpoint]
             assert "description" in endpoints[endpoint]
 
-    def test_root_includes_usage_info(self):
+    def test_root_includes_usage_info(self, client):
         """Should provide usage instructions."""
         response = client.get("/")
         assert response.status_code == 200
@@ -52,7 +56,7 @@ class TestRootEndpoint:
 class TestHealthEndpoint:
     """Tests for /health endpoint."""
 
-    def test_health_when_data_loaded(self):
+    def test_health_when_data_loaded(self, client):
         """Should return 200 when healthy."""
         response = client.get("/health")
         assert response.status_code == 200
@@ -65,7 +69,7 @@ class TestHealthEndpoint:
         assert isinstance(data["sku_count"], int)
         assert data["sku_count"] > 0
 
-    def test_health_response_format(self):
+    def test_health_response_format(self, client):
         """Should return properly formatted JSON response."""
         response = client.get("/health")
         assert response.status_code == 200
@@ -86,7 +90,7 @@ class TestHealthEndpoint:
 class TestForecastAPI:
     """Tests for /api/forecast endpoint."""
 
-    def test_forecast_with_valid_request(self):
+    def test_forecast_with_valid_request(self, client):
         """Should return forecast for valid request."""
         response = client.post(
             "/api/forecast",
@@ -120,7 +124,7 @@ class TestForecastAPI:
         # Validate forecast has expected length
         assert len(data["forecast"]) == 50  # historical_points (20) + forecast_horizon (30)
 
-    def test_forecast_with_default_horizon(self):
+    def test_forecast_with_default_horizon(self, client):
         """Should use default horizon of 90 when not specified."""
         response = client.post(
             "/api/forecast",
@@ -131,7 +135,7 @@ class TestForecastAPI:
         assert len(data["forecast"]) == 110  # historical_points (20) + default horizon (90)
         assert data["metadata"]["forecast_horizon"] == 90
 
-    def test_forecast_with_invalid_sku(self):
+    def test_forecast_with_invalid_sku(self, client):
         """Should return 400 for invalid SKU."""
         response = client.post(
             "/api/forecast",
@@ -142,7 +146,7 @@ class TestForecastAPI:
         assert "detail" in data
         assert "not found" in data["detail"]
 
-    def test_forecast_with_invalid_horizon_too_high(self):
+    def test_forecast_with_invalid_horizon_too_high(self, client):
         """Should return 422 for horizon too high (Pydantic validation)."""
         response = client.post(
             "/api/forecast",
@@ -150,7 +154,7 @@ class TestForecastAPI:
         )
         assert response.status_code == 422  # Pydantic validation error
 
-    def test_forecast_with_invalid_horizon_too_low(self):
+    def test_forecast_with_invalid_horizon_too_low(self, client):
         """Should return 422 for horizon too low (Pydantic validation)."""
         response = client.post(
             "/api/forecast",
@@ -158,7 +162,7 @@ class TestForecastAPI:
         )
         assert response.status_code == 422  # Pydantic validation error
 
-    def test_forecast_with_invalid_json(self):
+    def test_forecast_with_invalid_json(self, client):
         """Should return 422 for invalid JSON."""
         response = client.post(
             "/api/forecast",
@@ -167,7 +171,7 @@ class TestForecastAPI:
         )
         assert response.status_code == 422
 
-    def test_forecast_with_missing_sku(self):
+    def test_forecast_with_missing_sku(self, client):
         """Should return 422 for missing SKU field."""
         response = client.post(
             "/api/forecast",
@@ -178,7 +182,7 @@ class TestForecastAPI:
 class TestOpenAPISpec:
     """Tests for OpenAPI documentation."""
 
-    def test_openapi_json_available(self):
+    def test_openapi_json_available(self, client):
         """Should serve OpenAPI JSON specification."""
         response = client.get("/openapi.json")
         assert response.status_code == 200
@@ -187,7 +191,7 @@ class TestOpenAPISpec:
         assert "info" in data
         assert "paths" in data
 
-    def test_openapi_includes_forecast_endpoint(self):
+    def test_openapi_includes_forecast_endpoint(self, client):
         """Should document the forecast API endpoint."""
         response = client.get("/openapi.json")
         assert response.status_code == 200
@@ -202,7 +206,7 @@ class TestOpenAPISpec:
         assert "requestBody" in post_spec
         assert "responses" in post_spec
 
-    def test_openapi_includes_root_endpoint(self):
+    def test_openapi_includes_root_endpoint(self, client):
         """Should document the root endpoint."""
         response = client.get("/openapi.json")
         assert response.status_code == 200
@@ -212,7 +216,7 @@ class TestOpenAPISpec:
         root_path = data["paths"]["/"]
         assert "get" in root_path
 
-    def test_openapi_includes_health_endpoint(self):
+    def test_openapi_includes_health_endpoint(self, client):
         """Should document the health endpoint."""
         response = client.get("/openapi.json")
         assert response.status_code == 200
@@ -225,17 +229,17 @@ class TestOpenAPISpec:
 class TestHTTPMethods:
     """Tests for HTTP method handling."""
 
-    def test_forecast_get_not_allowed(self):
+    def test_forecast_get_not_allowed(self, client):
         """Should return 405 for GET on forecast endpoint."""
         response = client.get("/api/forecast")
         assert response.status_code == 405
 
-    def test_root_post_not_allowed(self):
+    def test_root_post_not_allowed(self, client):
         """Should return 405 for POST on root endpoint."""
         response = client.post("/")
         assert response.status_code == 405
 
-    def test_health_post_not_allowed(self):
+    def test_health_post_not_allowed(self, client):
         """Should return 405 for POST on health endpoint."""
         response = client.post("/health")
         assert response.status_code == 405
@@ -243,7 +247,7 @@ class TestHTTPMethods:
 class TestContentType:
     """Tests for content type handling."""
 
-    def test_forecast_requires_json_content_type(self):
+    def test_forecast_requires_json_content_type(self, client):
         """Should handle missing content-type gracefully."""
         response = client.post(
             "/api/forecast",

@@ -39,6 +39,7 @@ Usage:
 from typing import List, Dict, Any, Optional
 import sys
 from datetime import datetime
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -55,7 +56,7 @@ class ForecastRequest(BaseModel):
     sku: str = Field(
         ...,
         description="Product SKU code",
-        example="PRODUCT_123"
+        json_schema_extra={"example": "PRODUCT_123"}
     )
     forecast_horizon: int = Field(
         90,
@@ -80,6 +81,47 @@ APP_DESCRIPTION = (
     "Supports both stdio and HTTP/SSE transports."
 )
 
+# --- Global State ---
+
+PROCESSED_DF = None  # Will be loaded on startup
+
+# --- Lifespan Context Manager ---
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Manage application lifespan: startup and shutdown.
+    
+    This replaces the deprecated @app.on_event("startup") pattern.
+    """
+    global PROCESSED_DF
+    
+    # Startup
+    print(f"Starting {APP_NAME} v{APP_VERSION}")
+    
+    try:
+        # Load and cache data using singleton pattern
+        PROCESSED_DF = logic.get_processed_data()
+        sku_count = len(logic.get_available_skus(PROCESSED_DF))
+        
+        print(f"✓ Data loaded successfully")
+        print(f"✓ Found {sku_count} unique SKUs")
+        print(f"✓ Ready to serve requests")
+        
+    except FileNotFoundError as e:
+        print(f"✗ ERROR: Data file not found: {e}")
+        print("✗ Server will start but forecast endpoints will fail")
+        # Don't crash - allow health checks to work
+        
+    except Exception as e:
+        print(f"✗ ERROR: Failed to load data: {e}")
+        print("✗ Server will start but forecast endpoints will fail")
+    
+    yield  # Application runs here
+    
+    # Shutdown (cleanup if needed)
+    print(f"Shutting down {APP_NAME}")
+
 # --- FastAPI Application ---
 
 app = FastAPI(
@@ -88,6 +130,7 @@ app = FastAPI(
     version=APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # --- FastMCP Server ---
@@ -280,7 +323,12 @@ async def health_check():
 
     # Check if data is loaded
     data_loaded = PROCESSED_DF is not None
-    sku_count = len(logic.get_available_skus(PROCESSED_DF)) if data_loaded else 0
+    
+    # Get SKU count safely
+    if data_loaded and PROCESSED_DF is not None:
+        sku_count = len(logic.get_available_skus(PROCESSED_DF))
+    else:
+        sku_count = 0
 
     # Determine health status
     is_healthy = data_loaded
@@ -344,36 +392,9 @@ async def api_forecast(request: ForecastRequest):
 # Mount MCP server as ASGI sub-application at /mcp endpoint
 # This exposes MCP tools via HTTP/SSE transport for remote clients
 # Local stdio transport is handled separately in main block
-app.mount("/mcp", mcp.sse_app())
+app.mount("/mcp", mcp.http_app())
 
-print(f"✓ Mounted MCP server at /mcp with SSE transport")
-
-# --- Startup Event ---
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize application on startup."""
-    global PROCESSED_DF
-    
-    print(f"Starting {APP_NAME} v{APP_VERSION}")
-    
-    try:
-        # Load and cache data using singleton pattern
-        PROCESSED_DF = logic.get_processed_data()
-        sku_count = len(logic.get_available_skus(PROCESSED_DF))
-        
-        print(f"✓ Data loaded successfully")
-        print(f"✓ Found {sku_count} unique SKUs")
-        print(f"✓ Ready to serve requests")
-        
-    except FileNotFoundError as e:
-        print(f"✗ ERROR: Data file not found: {e}")
-        print("✗ Server will start but forecast endpoints will fail")
-        # Don't crash - allow health checks to work
-        
-    except Exception as e:
-        print(f"✗ ERROR: Failed to load data: {e}")
-        print("✗ Server will start but forecast endpoints will fail")
+print(f"✓ Mounted MCP server at /mcp with HTTP transport")
 
 # --- Main Entry Point ---
 
