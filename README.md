@@ -76,39 +76,51 @@ The application now supports user-provided data for both interactive analysis an
 
 ### Data Format Requirements
 
-Your data file must contain the following columns:
-- **Date column**: Order dates (will be automatically detected and converted)
-- **Product/SKU column**: Product identifiers (strings)
-- **Quantity column**: Sales/order quantities (numeric values)
+The application is designed to be flexible and can work with various data formats.
 
-**Example CSV format:**
+#### Option 1: Default Column Names
+If your data uses the following standard column names, no extra configuration is needed:
+- **`date`**: The column containing dates or timestamps.
+- **`sales`**: The numeric column with the values you want to forecast (e.g., sales, quantity, revenue).
+- **`sku`**: The column with product identifiers (optional, for multi-product datasets).
+
+#### Option 2: Custom Column Names
+If your data uses different column names (e.g., `transaction_date`, `revenue`, `product_id`), you can easily map them to the required fields.
+
+- **Gradio UI**: After uploading your file, a "Column Mapping" section will appear, allowing you to select which of your columns correspond to the Date, Metric, and Product fields. The system will provide smart suggestions to guide you.
+- **MCP Tool**: When calling the `forecast_with_custom_data` tool, you can use the optional `date_col`, `metric_col`, and `product_col` parameters to specify your column names.
+
+**Example CSV with custom columns:**
 ```csv
-date,sku,quantity
-2024-01-01,PRODUCT_A,100
-2024-01-02,PRODUCT_A,120
-2024-01-01,PRODUCT_B,50
-2024-01-02,PRODUCT_B,75
+transaction_date,product_id,revenue
+2024-01-01,WIDGET-A,150.75
+2024-01-02,WIDGET-A,165.50
+2024-01-01,GADGET-B,80.00
+2024-01-02,GADGET-B,95.25
 ```
 
 ### Gradio Web Interface
 
 1. **Upload Your Data**: Use the file upload area in the Gradio interface to select and upload your CSV, Excel, or JSON file.
-2. **Automatic Processing**: The system will automatically detect your data format and extract available products/SKUs.
-3. **Generate Forecasts**: Select a product from the dropdown and specify your forecast horizon to generate predictions.
+2. **Map Your Columns**: If your column names are non-standard, use the dropdowns that appear to map your columns to the required `Date`, `Metric`, and `Product` fields.
+3. **Generate Forecasts**: Select a product from the updated dropdown and specify your forecast horizon to generate predictions.
 
 ### MCP Server Tool
 
-For programmatic access, use the `forecast_with_custom_data` MCP tool:
+For programmatic access, use the `forecast_with_custom_data` MCP tool.
 
 **Tool Parameters:**
-- `file_data_base64`: Base64-encoded file content
-- `file_name`: Original filename (for format detection)
-- `sku`: Product/SKU identifier to forecast
-- `horizon`: Number of days to forecast
+- `file_data_base64` (str): Base64-encoded file content.
+- `file_name` (str): Original filename (for format detection).
+- `sku` (str): Product/SKU identifier to forecast.
+- `forecast_horizon` (int): Number of days to forecast (default: 90).
+- `date_col` (Optional[str]): Name of your date column.
+- `metric_col` (Optional[str]): Name of your metric/sales column.
+- `product_col` (Optional[str]): Name of your product/SKU column.
 
 **Size Limit**: Files must be under 100KB when Base64-encoded (approximately 66KB raw data).
 
-**Example Usage:**
+**Example 1: Using Default Column Names (`date`, `sales`, `sku`)**
 ```python
 # Encode your CSV file to Base64
 import base64
@@ -120,7 +132,21 @@ result = await forecast_with_custom_data(
     file_data_base64=file_data,
     file_name="my_sales_data.csv", 
     sku="PRODUCT_A",
-    horizon=7
+    forecast_horizon=30
+)
+```
+
+**Example 2: Using Custom Column Names**
+```python
+# Assume your data has columns: 'transaction_date', 'revenue', 'product_id'
+result = await forecast_with_custom_data(
+    file_data_base64=file_data,
+    file_name="my_sales_data.csv", 
+    sku="WIDGET-A",
+    forecast_horizon=30,
+    date_col="transaction_date",
+    metric_col="revenue",
+    product_col="product_id"
 )
 ```
 
