@@ -84,17 +84,56 @@ def get_available_skus(df: pd.DataFrame) -> List[str]:
     
     return sorted(df.index.get_level_values('sku').unique().tolist())
 
-def create_forecast_plot(forecast_data: Dict[str, List]) -> go.Figure:
+def create_forecast_plot(forecast_data: Dict[str, Any]) -> go.Figure:
     """
-    Create a Plotly figure from forecast data.
+    Create interactive Plotly figure from forecast data.
     
     Args:
-        forecast_data: Output from get_forecast_data()
+        forecast_data: Output dictionary from get_forecast_data()
         
     Returns:
-        Plotly Figure object ready for display
+        Plotly Figure object ready for display in Gradio or HTML export
+        
+    Example:
+        >>> data = get_forecast_data(df, 'PRODUCT_123', 90)
+        >>> fig = create_forecast_plot(data)
+        >>> fig.show()  # Opens in browser
     """
-    pass
+    dates = forecast_data['dates']
+    actuals = forecast_data['actuals']
+    forecast = forecast_data['forecast']
+    metadata = forecast_data['metadata']
+    
+    fig = go.Figure()
+    
+    # Historical trace
+    fig.add_trace(go.Scatter(
+        x=dates, y=actuals,
+        mode='lines+markers',
+        name='Historical Sales',
+        line=dict(color='blue', width=2),
+        marker=dict(size=4)
+    ))
+    
+    # Forecast trace
+    fig.add_trace(go.Scatter(
+        x=dates, y=forecast,
+        mode='lines',
+        name='Forecasted Sales',
+        line=dict(color='red', width=2, dash='dash')
+    ))
+    
+    fig.update_layout(
+        title=f"Sales Forecast for SKU: {metadata['sku']}",
+        xaxis_title="Date",
+        yaxis_title="Quantity Sold",
+        legend_title="Series",
+        hovermode='x unified',
+        template='plotly_white',
+        height=500
+    )
+    
+    return fig
 
 def validate_forecast_request(
     sku: str,
