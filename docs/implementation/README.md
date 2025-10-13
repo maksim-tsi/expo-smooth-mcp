@@ -12,16 +12,14 @@ While the SPECIFICATION.md provides the complete technical reference (~21,000 li
 |-------|-------|-------|----------|--------|
 | **Phase 1** | [Decouple Logic](PHASE_1_IMPLEMENTATION.md) | 8 | ~12h | ✅ **COMPLETE** |
 | **Phase 2** | [FastMCP Backend](PHASE_2_IMPLEMENTATION.md) | 12 | ~20h | ✅ **COMPLETE** |
-| **Phase 3** | [Mount Gradio UI](PHASE_3_IMPLEMENTATION.md) | 6 | ~7h | ✅ **Guide Ready** |
-| **Phase 4A** | Docker MCP *(TBD)* | 7 | ~10h | ⏸️ To be created |
-| **Phase 4B** | Fly.io Deploy *(TBD)* | 8 | ~12h | ⏸️ To be created |
-| **Phase 5** | Production *(TBD)* | 14 | ~22h | ⏸️ To be created |
-| **Phase 6** | Documentation *(TBD)* | 10 | ~16h | ⏸️ To be created |
+| **Phase 3** | [Mount Gradio UI](PHASE_3_IMPLEMENTATION.md) | 6 | ~7h | ✅ **COMPLETE** |
+| **Phase 4** | [Deployment](PHASE_4_IMPLEMENTATION.md) | 8 | ~9h | ✅ **Guide Ready** |
 
 ### Quick Access
 - **Phase 1:** [Implementation Guide](PHASE_1_IMPLEMENTATION.md) | [Code Review](../PHASE_1_CODE_REVIEW.md) ✅ Complete
 - **Phase 2:** [Implementation Guide](PHASE_2_IMPLEMENTATION.md) | [Quick Start](PHASE_2_QUICKSTART.md) | [Code Review](../PHASE_2_CODE_REVIEW.md) ✅ Complete
-- **Phase 3:** [Implementation Guide](PHASE_3_IMPLEMENTATION.md) | [Quick Start](PHASE_3_QUICKSTART.md) ✅ Ready to Begin
+- **Phase 3:** [Implementation Guide](PHASE_3_IMPLEMENTATION.md) | [Quick Start](PHASE_3_QUICKSTART.md) | [Code Review](../PHASE_3_CODE_REVIEW.md) ✅ Complete
+- **Phase 4:** [Implementation Guide](PHASE_4_IMPLEMENTATION.md) | [Quick Start](PHASE_4_QUICKSTART.md) | [Docker MCP Guide](PHASE_4_DOCKER_MCP_GUIDE.md) | [Fly.io Guide](PHASE_4_FLYIO_GUIDE.md) ✅ Ready to Begin
 
 ## How to Use These Guides
 
