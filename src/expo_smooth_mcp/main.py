@@ -36,16 +36,40 @@ Usage:
     $ python -m src.expo_smooth_mcp.main --transport stdio
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import sys
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from fastmcp import FastMCP
 import uvicorn
 
 # Import business logic layer
 from . import logic
+
+# --- Pydantic Models ---
+
+class ForecastRequest(BaseModel):
+    """Request model for forecast API."""
+    sku: str = Field(
+        ...,
+        description="Product SKU code",
+        example="PRODUCT_123"
+    )
+    forecast_horizon: int = Field(
+        90,
+        ge=1,
+        le=365,
+        description="Days to forecast ahead"
+    )
+
+class ForecastResponse(BaseModel):
+    """Response model for forecast API."""
+    dates: List[str]
+    actuals: List[Optional[float]]
+    forecast: List[float]
+    metadata: Dict[str, Any]
 
 # --- Application Configuration ---
 
@@ -276,6 +300,44 @@ async def health_check():
         content=response,
         status_code=status_code
     )
+
+@app.post("/api/forecast", response_model=ForecastResponse)
+async def api_forecast(request: ForecastRequest):
+    """
+    Generate sales forecast via REST API.
+    
+    Alternative to MCP tools for clients that prefer REST.
+    Accepts JSON request body with SKU and horizon.
+    """
+    if PROCESSED_DF is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Data not loaded. Server not ready."
+        )
+    
+    try:
+        # Get valid SKUs for validation
+        valid_skus = logic.get_available_skus(PROCESSED_DF)
+        
+        # Validate and generate forecast
+        logic.validate_forecast_request(
+            request.sku,
+            request.forecast_horizon,
+            valid_skus
+        )
+        
+        forecast_data = logic.get_forecast_data(
+            PROCESSED_DF,
+            request.sku,
+            request.forecast_horizon
+        )
+        
+        return forecast_data
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- Mount MCP Server ---
 
