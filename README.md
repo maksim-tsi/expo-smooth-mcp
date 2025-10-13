@@ -182,11 +182,17 @@ This section is for the core team using the pre-configured `tsi` conda environme
 
 ### Development Guides  
 - **[Phase 1: Decouple Logic](docs/implementation/PHASE_1_IMPLEMENTATION.md)** - Extract business logic
-- *(Additional phase guides to be created as needed)*
+- **[Phase 2: FastMCP Backend](docs/implementation/PHASE_2_IMPLEMENTATION.md)** - Build MCP server with dual-transport
+- **[Phase 2: Code Review](docs/PHASE_2_CODE_REVIEW.md)** - Comprehensive code review and validation
+
+### Claude Desktop Integration
+- **[Claude Desktop Test Report](docs/CLAUDE_DESKTOP_TEST_REPORT.md)** - Complete validation test results
+- **[Integration Guide](docs/PHASE_2_CODE_REVIEW.md#claude-desktop-integration)** - Setup instructions and troubleshooting
 
 ### Current Status
-📋 **Specification Complete** - All 65 tasks fully specified, ready for implementation  
-⏸️ **Implementation** - Phase 1 specification complete, implementation ready to begin
+✅ **Phase 1 Complete** - Business logic extracted and validated (27/27 tests passing)  
+✅ **Phase 2 Complete** - FastMCP backend deployed and validated with Claude Desktop  
+📋 **Phase 3 Ready** - Gradio UI integration (next phase)
 
 See [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md) for detailed status and timeline.
 

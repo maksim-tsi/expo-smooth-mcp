@@ -1544,4 +1544,87 @@ http://localhost:8000/mcp        # MCP protocol endpoint
 
 ---
 
+## Claude Desktop Integration
+
+### Shell Script Wrapper Approach
+
+**Issue Encountered:**
+Claude Desktop runs MCP servers in an isolated environment without access to shell configuration (`.zshrc`, `.bashrc`) or conda environments. Direct Python execution fails with:
+- `spawn python ENOENT` - Python not found in PATH
+- `ModuleNotFoundError: No module named 'src'` - Import paths not resolved
+
+**Solution Implemented:**
+Created shell script wrapper (`run_mcp_server.sh`) that:
+1. Activates conda environment explicitly
+2. Sets correct working directory
+3. Launches server with proper Python interpreter
+
+**File: `/Users/max/Documents/code/expo-smooth-mcp/run_mcp_server.sh`**
+```bash
+#!/bin/bash
+source /Users/max/miniconda3/bin/activate tsi
+cd /Users/max/Documents/code/expo-smooth-mcp
+exec python -m src.expo_smooth_mcp.main --transport stdio
+```
+
+**Permissions:**
+```bash
+chmod +x /Users/max/Documents/code/expo-smooth-mcp/run_mcp_server.sh
+```
+
+**Claude Desktop Configuration:**
+File: `~/Library/Application Support/Claude/claude_desktop_config.json`
+```json
+{
+  "mcpServers": {
+    "expo-smooth-forecast": {
+      "command": "/Users/max/Documents/code/expo-smooth-mcp/run_mcp_server.sh"
+    }
+  }
+}
+```
+
+### Integration Validation Results
+
+✅ **Successfully Integrated** - October 13, 2025
+
+**Test Results:**
+- ✅ Tool Discovery: Both tools visible in Claude Desktop
+- ✅ Tool Invocation: `list_available_skus()` executed successfully
+- ✅ Forecasting: `forecast_sku(sku, horizon)` computed correctly
+- ✅ Error Handling: Invalid SKUs handled gracefully
+- ✅ Data Transport: stdio communication working flawlessly
+
+**Performance:**
+- Response Time: < 2 seconds for list operations
+- Forecast Time: < 3 seconds for 30-90 day forecasts
+- Memory Usage: Stable (data loaded once on startup)
+
+See **CLAUDE_DESKTOP_TEST_REPORT.md** for detailed test case documentation.
+
+### Troubleshooting Guide
+
+**Problem: Claude Desktop shows "Server not found"**
+- Check shell script has execute permissions: `chmod +x run_mcp_server.sh`
+- Verify absolute paths in script (no `~` or relative paths)
+- Check conda environment exists: `conda env list`
+
+**Problem: "Module not found" errors**
+- Ensure `cd` to project directory before running Python
+- Verify package installed: `pip list | grep expo-smooth-mcp`
+- Test import: `python -c "import expo_smooth_mcp; print(expo_smooth_mcp.__file__)"`
+
+**Problem: Tools not appearing in Claude**
+- Restart Claude Desktop after config changes
+- Check JSON syntax in `claude_desktop_config.json`
+- Verify server starts: Run shell script manually in terminal
+
+**Best Practices:**
+1. Use absolute paths everywhere (shell script, config file)
+2. Activate conda environment explicitly (don't rely on shell config)
+3. Test shell script independently before adding to Claude config
+4. Keep server logs accessible for debugging: Add `2>&1 | tee server.log` to script
+
+---
+
 **End of Phase 2 Code Review**
