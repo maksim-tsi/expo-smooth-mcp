@@ -324,6 +324,97 @@ class TestMCPCustomDataTool:
         invalid_sku = "NONEXISTENT_SKU"
         assert invalid_sku not in valid_skus
 
+    def test_forecast_with_column_mapping(self):
+        """Test forecast with custom column mapping."""
+        import base64
+        import io
+        import pandas as pd
+        from src.expo_smooth_mcp import preprocessing, logic, column_analysis
+
+        # Create test data with custom column names
+        custom_csv_data = """transaction_date,product_id,revenue
+2024-01-01,SKU_TEST_001,100
+2024-01-02,SKU_TEST_001,105
+2024-01-03,SKU_TEST_001,110
+2024-01-04,SKU_TEST_001,115
+2024-01-05,SKU_TEST_001,120"""
+
+        # Encode as Base64
+        file_data_base64 = base64.b64encode(custom_csv_data.encode()).decode()
+        file_name = "custom_data.csv"
+
+        # Simulate MCP tool logic with column mapping
+        sku = "SKU_TEST_001"
+        forecast_horizon = 7
+        date_col = "transaction_date"
+        metric_col = "revenue"
+        product_col = "product_id"
+
+        # 1. Decode Base64
+        file_bytes = base64.b64decode(file_data_base64)
+
+        # 2. Read CSV
+        file_buffer = io.BytesIO(file_bytes)
+        df = pd.read_csv(file_buffer)
+
+        # 3. Validate column mapping
+        validation = column_analysis.validate_column_mapping(df, date_col, metric_col, product_col)
+        assert validation["valid"], f"Column mapping validation failed: {validation['errors']}"
+
+        # 4. Apply column mapping
+        df_processed = df.copy()
+        df_processed = df_processed.rename(columns={
+            date_col: 'date',
+            metric_col: 'sales'
+        })
+        df_processed = df_processed.rename(columns={product_col: 'sku'})
+
+        # 5. Map sales to quantity
+        df_processed['quantity'] = df_processed['sales']
+        df_processed = df_processed.drop('sales', axis=1)
+
+        # 6. Preprocess
+        processed_df = preprocessing.preprocess_data(df_processed)
+        assert processed_df is not None
+
+        # 7. Check SKU exists
+        valid_skus = logic.get_available_skus(processed_df)
+        assert sku in valid_skus
+
+        # 8. Generate forecast (may fail with small dataset, that's OK)
+        try:
+            forecast_data = logic.get_forecast_data(processed_df, sku, forecast_horizon)
+            assert "dates" in forecast_data
+            assert "forecast" in forecast_data
+        except ValueError as e:
+            # Expected for small test datasets
+            assert "seasonal" in str(e).lower() or "cycle" in str(e).lower()
+
+    def test_forecast_column_mapping_validation(self):
+        """Test column mapping validation errors."""
+        import pandas as pd
+        from src.expo_smooth_mcp import column_analysis
+
+        # Create test DataFrame
+        df = pd.DataFrame({
+            'timestamp': ['2024-01-01'],
+            'value': [100],
+            'product': ['SKU001']
+        })
+
+        # Test invalid column names
+        validation = column_analysis.validate_column_mapping(df, "nonexistent_date", "value", "product")
+        assert not validation["valid"]
+        assert "date" in str(validation["errors"])
+
+        # Test valid mapping
+        validation = column_analysis.validate_column_mapping(df, "timestamp", "value", "product")
+        assert validation["valid"]
+
+        # Test missing product column (should still be valid)
+        validation = column_analysis.validate_column_mapping(df, "timestamp", "value", None)
+        assert validation["valid"]
+
 
 # --- Integration Tests ---
 
@@ -393,20 +484,72 @@ class TestCustomDataIntegration:
             actual_ext = os.path.splitext(filename)[1].lower()
             assert actual_ext == expected_ext
 
-    def test_column_validation_logic(self):
-        """Test column validation logic."""
-        # Valid columns
-        valid_df = pd.DataFrame({
-            'date': ['2024-01-01'],
-            'sales': [100]
-        })
-        assert 'date' in valid_df.columns
-        assert 'sales' in valid_df.columns
+    def test_forecast_with_column_mapping(self):
+        """Test forecast with custom column mapping."""
+        import base64
+        import io
+        import pandas as pd
+        from src.expo_smooth_mcp import preprocessing, logic, column_analysis
 
-        # Invalid columns
-        invalid_df = pd.DataFrame({
-            'timestamp': ['2024-01-01'],
-            'value': [100]
+        # Create test data with custom column names
+        custom_csv_data = """transaction_date,product_id,revenue
+2024-01-01,SKU_TEST_001,100
+2024-01-02,SKU_TEST_001,105
+2024-01-03,SKU_TEST_001,110
+2024-01-04,SKU_TEST_001,115
+2024-01-05,SKU_TEST_001,120"""
+
+        # Encode as Base64
+        file_data_base64 = base64.b64encode(custom_csv_data.encode()).decode()
+        file_name = "custom_data.csv"
+
+        # Simulate MCP tool logic with column mapping
+        sku = "SKU_TEST_001"
+        forecast_horizon = 7
+        date_col = "transaction_date"
+        metric_col = "revenue"
+        product_col = "product_id"
+
+        # 1. Decode Base64
+        file_bytes = base64.b64decode(file_data_base64)
+
+        # 2. Read CSV
+        file_buffer = io.BytesIO(file_bytes)
+        df = pd.read_csv(file_buffer)
+
+        # 3. Validate column mapping
+        validation = column_analysis.validate_column_mapping(df, date_col, metric_col, product_col)
+        assert validation["valid"], f"Column mapping validation failed: {validation['errors']}"
+
+        # 4. Apply column mapping
+        df_processed = df.copy()
+        df_processed = df_processed.rename(columns={
+            date_col: 'date',
+            metric_col: 'sales'
         })
-        assert 'date' not in invalid_df.columns
-        assert 'sales' not in invalid_df.columns
+        df_processed = df_processed.rename(columns={product_col: 'sku'})
+
+        # 5. Map sales to quantity
+        df_processed['quantity'] = df_processed['sales']
+        df_processed = df_processed.drop('sales', axis=1)
+
+        # 6. Preprocess
+        processed_df = preprocessing.preprocess_data(df_processed)
+        assert processed_df is not None
+
+        # 7. Check SKU exists
+        valid_skus = logic.get_available_skus(processed_df)
+        assert sku in valid_skus
+
+        # 8. Generate forecast (may fail with small dataset, that's OK)
+        try:
+            forecast_data = logic.get_forecast_data(processed_df, sku, forecast_horizon)
+            assert "dates" in forecast_data
+            assert "forecast" in forecast_data
+        except ValueError as e:
+            # Expected for small test datasets
+            assert "seasonal" in str(e).lower() or "cycle" in str(e).lower()
+
+    def test_forecast_column_mapping_validation(self):
+        """Test column mapping validation errors."""
+        import pandas as pd

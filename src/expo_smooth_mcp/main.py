@@ -266,24 +266,35 @@ async def forecast_with_custom_data(
     file_data_base64: str,
     file_name: str,
     sku: str,
-    forecast_horizon: int = 90
+    forecast_horizon: int = 90,
+    date_col: Optional[str] = None,
+    metric_col: Optional[str] = None,
+    product_col: Optional[str] = None
 ) -> dict:
     """
-    Generate sales forecast using user-provided data.
+    Generate sales forecast using user-provided data with flexible column mapping.
 
     This tool allows you to forecast on your own sales data by encoding
     the file content as Base64 and passing it directly in the request.
+    You can optionally specify column mappings if your data uses different
+    column names than the defaults.
 
     **IMPORTANT SIZE LIMITATION:**
     Due to client payload constraints, this tool supports files up to ~66KB
     (100KB Base64-encoded). For larger files, use the Gradio UI or wait for
     the two-step upload feature in a future release.
 
-    **Required Data Format:**
-    Your data must contain at minimum:
-    - 'date' column: Date/timestamp for each observation
-    - 'sales' column: Sales values (numeric)
-    - 'sku' column: Product identifier (if multiple products)
+    **Data Format Options:**
+
+    1. **Default Format** (no column mapping needed):
+       - 'date' column: Date/timestamp for each observation
+       - 'sales' column: Sales values (numeric)
+       - 'sku' column: Product identifier (if multiple products)
+
+    2. **Custom Format** (use column mapping parameters):
+       - date_col: Name of your date column
+       - metric_col: Name of your sales/metric column
+       - product_col: Name of your product/SKU column (optional)
 
     Supported formats: CSV, Excel (.xlsx, .xls), JSON
 
@@ -292,6 +303,9 @@ async def forecast_with_custom_data(
         file_name: Original filename (used to detect format)
         sku: Product SKU code to forecast
         forecast_horizon: Number of days to forecast (default: 90, range: 7-365)
+        date_col: Optional name of date column (default: auto-detect or 'date')
+        metric_col: Optional name of metric column (default: auto-detect or 'sales')
+        product_col: Optional name of product column (default: auto-detect or 'sku')
 
     Returns:
         Forecast data with historical and predicted values:
@@ -308,7 +322,7 @@ async def forecast_with_custom_data(
         }
 
     Example Usage:
-        # Python client example
+        # With default column names
         import base64
 
         with open("my_sales.csv", "rb") as f:
@@ -322,8 +336,19 @@ async def forecast_with_custom_data(
             forecast_horizon=90
         )
 
+        # With custom column names
+        result = await forecast_with_custom_data(
+            file_data_base64=file_base64,
+            file_name="my_sales.csv",
+            sku="Widget_A",
+            forecast_horizon=60,
+            date_col="transaction_date",
+            metric_col="revenue",
+            product_col="product_id"
+        )
+
     Raises:
-        ValueError: If file too large, invalid format, or SKU not found
+        ValueError: If file too large, invalid format, column mapping invalid, or SKU not found
         RuntimeError: If data processing fails
     """
     try:
@@ -365,17 +390,55 @@ async def forecast_with_custom_data(
         except Exception as e:
             raise ValueError(f"Failed to parse file: {str(e)}")
 
-        # Validate required columns
-        required_cols = ['date', 'sales']
-        missing_cols = [col for col in required_cols if col not in df.columns]
-        if missing_cols:
-            raise ValueError(
-                f"Missing required columns: {missing_cols}. "
-                f"File must contain: {required_cols}"
+        # Handle column mapping
+        if date_col or metric_col or product_col:
+            # Custom column mapping provided - validate it
+            from src.expo_smooth_mcp import column_analysis
+
+            # Check that all required columns are specified
+            if not date_col or not metric_col:
+                raise ValueError(
+                    "When using custom column mapping, both date_col and metric_col "
+                    "must be specified. Optional: product_col"
+                )
+
+            # Validate the mapping
+            validation = column_analysis.validate_column_mapping(
+                df, date_col, metric_col, product_col
             )
 
+            if not validation["valid"]:
+                error_msg = "Invalid column mapping:\n" + "\n".join(validation["errors"])
+                raise ValueError(error_msg)
+
+            # Show warnings if any
+            if validation["warnings"]:
+                print(f"⚠️ Column mapping warnings: {validation['warnings']}")
+
+            # Apply column mapping
+            df_processed = df.copy()
+            df_processed = df_processed.rename(columns={
+                date_col: 'date',
+                metric_col: 'sales'
+            })
+
+            if product_col:
+                df_processed = df_processed.rename(columns={product_col: 'sku'})
+
+        else:
+            # No custom mapping - use default column names
+            required_cols = ['date', 'sales']
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            if missing_cols:
+                raise ValueError(
+                    f"Missing required columns: {missing_cols}. "
+                    f"File must contain: {required_cols}. "
+                    f"Alternatively, specify custom column mapping with date_col, metric_col parameters."
+                )
+
+            df_processed = df.copy()
+
         # Map 'sales' to 'quantity' for preprocessing compatibility
-        df_processed = df.copy()
         df_processed['quantity'] = df_processed['sales']
         df_processed = df_processed.drop('sales', axis=1)
 
@@ -383,8 +446,8 @@ async def forecast_with_custom_data(
         processed_df = preprocessing.preprocess_data(df_processed)
         if processed_df is None or processed_df.empty:
             raise ValueError(
-                "Data preprocessing failed. Check that 'date' column contains "
-                "valid dates and 'sales' column contains numeric values."
+                "Data preprocessing failed. Check that date column contains "
+                "valid dates and metric column contains numeric values."
             )
 
         # Validate SKU exists
