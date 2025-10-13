@@ -61,6 +61,30 @@ FastAPI (ASGI)
 └── Core Business Logic (logic.py) # Framework-agnostic
 ```
 
+### Local Deployment Strategy: Docker MCP Toolkit
+
+For local development and testing, we will leverage the **Docker MCP Toolkit** (integrated into Docker Desktop) rather than classic Docker containers:
+
+**Key Benefits:**
+- ✅ **One-Click Client Setup:** Automatic configuration for Claude Desktop via Docker Desktop UI
+- ✅ **Built-in Security Sandboxing:** Resource limits (1 CPU, 2GB RAM max), filesystem isolation, secret scanning
+- ✅ **Centralized Management:** Single UI for all MCP servers (catalog + custom)
+- ✅ **Automatic Discovery:** Clients discover tools through secure gateway
+- ✅ **No Manual JSON Editing:** Eliminates error-prone `mcp.json` configuration
+
+**Implementation:**
+```bash
+# Build Docker image
+docker build -t expo-smooth-mcp:latest .
+
+# Enable in MCP Toolkit
+docker mcp server enable expo-smooth-mcp:latest
+
+# Connect clients via Docker Desktop UI (Clients tab → Claude Desktop → Connect)
+```
+
+**Reference:** See [docker-vs-docker-mcp.md](../docs/docker-vs-docker-mcp.md) for detailed analysis.
+
 ---
 
 ## Rationale
@@ -86,6 +110,7 @@ FastAPI (ASGI)
 | **Always-On Option** | No (free tier auto-pauses) | Yes (`min_machines_running=1`) | Fly.io |
 | **Global Distribution** | Single region | 30+ regions | Fly.io |
 | **Cost (512MB)** | $0 (free tier) | $0-5/month | HF Spaces (cheaper) |
+| **Memory Requirements** | N/A (managed) | 256MB min, 512MB recommended | Fly.io (right-sized) |
 | **Primary Purpose** | ML demos | Production apps | Fly.io (for our needs) |
 | **Deployment Model** | Git push | Docker + CLI | Tie |
 
@@ -128,6 +153,51 @@ FastAPI (ASGI)
 3. **Scalability:** Global deployment with autoscaling
 4. **Production-Ready:** OAuth2, rate limiting, structured logging out-of-box
 5. **Maintainability:** Framework-agnostic core logic, easily testable
+
+### Resource Requirements Analysis
+
+**Exponential Smoothing is Exceptionally Lightweight:**
+
+Our application has minimal memory footprint due to its stateless, statistical nature:
+
+| Component | Memory Footprint |
+|-----------|-----------------|
+| Python 3.12 runtime | ~30-50MB |
+| pandas (small FMCG dataset) | ~20-40MB |
+| statsmodels (Holt-Winters) | ~30-50MB |
+| FastMCP + FastAPI + Uvicorn | ~20-30MB |
+| Application code + model state | ~10-20MB |
+| **Baseline Total** | ~**110-190MB** |
+| **Peak (during forecasting)** | ~**200-300MB** |
+| **+ Plotly figure generation** | ~**+50-100MB** |
+| **+ Gradio UI (if mounted)** | ~**+50-100MB** |
+
+**Recommended Container Configurations:**
+
+1. **Minimal (FastMCP only):** 256MB RAM
+   - Sufficient for core forecasting without UI
+   - Suitable for stdio transport (local clients)
+   
+2. **Standard (FastMCP + REST API):** 512MB RAM ✅ **RECOMMENDED**
+   - Comfortable headroom for HTTP/SSE transport
+   - Supports concurrent requests
+   - Allows Plotly visualization generation
+   
+3. **Full (with Gradio UI):** 1GB RAM
+   - Required if mounting Gradio at `/gradio`
+   - Supports full backward compatibility
+
+**Docker MCP Toolkit Default:** 2GB RAM limit (conservative, significantly oversized for this app)
+
+**Why 512MB is Optimal:**
+- ✅ 2-3x safety margin over peak usage
+- ✅ Supports burst traffic without OOM errors
+- ✅ Enables concurrent forecast requests
+- ✅ Accommodates Plotly/visualization overhead
+- ✅ Fits Fly.io free tier comfortably
+- ✅ Cost-effective ($0-5/month on Fly.io)
+
+**Validation:** This matches the baseline profile: "suitable for 128-512 MB containers" confirmed by dependency analysis.
 
 ---
 
@@ -284,10 +354,12 @@ FastAPI (ASGI)
 
 1. [research-Lightweight-MCP-Server.md](../docs/research-Lightweight-MCP-Server.md) - Framework analysis
 2. [research-Gradio-FastMCP-Migration.md](../docs/research-Gradio-FastMCP-Migration.md) - Migration strategy
-3. [MIGRATION_ROADMAP.md](../docs/MIGRATION_ROADMAP.md) - Detailed implementation plan
-4. [FastMCP Documentation](https://gofastmcp.com/)
-5. [Fly.io Documentation](https://fly.io/docs/)
-6. [Gradio Issue #11961](https://github.com/gradio-app/gradio/issues/11961) - 600ms overhead report
+3. [docker-vs-docker-mcp.md](../docs/docker-vs-docker-mcp.md) - Docker deployment options analysis
+4. [MIGRATION_ROADMAP.md](../docs/MIGRATION_ROADMAP.md) - Detailed implementation plan
+5. [FastMCP Documentation](https://gofastmcp.com/)
+6. [Fly.io Documentation](https://fly.io/docs/)
+7. [Docker MCP Toolkit Documentation](https://docs.docker.com/desktop/mcp/)
+8. [Gradio Issue #11961](https://github.com/gradio-app/gradio/issues/11961) - 600ms overhead report
 
 ---
 
@@ -309,4 +381,5 @@ FastAPI (ASGI)
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-10-12 | Dev Team | Initial proposal |
+| 1.1 | 2025-10-13 | Dev Team | Added Docker MCP Toolkit local deployment strategy; Added detailed resource requirements analysis (512MB RAM recommendation); Updated memory requirements in comparison table |
 

@@ -388,13 +388,13 @@
 
 ---
 
-### Phase 4: Dockerize and Deploy to Fly.io (2-3 days)
+### Phase 4: Dockerize and Deploy (2-3 days)
 
-**Objective:** Package application and deploy to production infrastructure.
+**Objective:** Package application for both local (Docker MCP Toolkit) and cloud (Fly.io) deployment.
 
-#### Tasks
+#### Part A: Docker MCP Toolkit Setup (Local Development)
 
-1. **Create `Dockerfile`**
+1. **Create optimized `Dockerfile`**
    ```dockerfile
    # Multi-stage build for minimal image size
    FROM python:3.12-slim AS builder
@@ -464,12 +464,44 @@
      path = "/health"
    
    [[vm]]
-     memory = '512mb'
+     memory = '512mb'  # Optimal for expo-smooth-mcp
      cpu_kind = 'shared'
      cpus = 1
    ```
 
-3. **Deploy to Fly.io**
+2. **Build and Test Docker Image Locally**
+   ```bash
+   # Build image
+   docker build -t expo-smooth-mcp:latest .
+   
+   # Test HTTP/SSE mode
+   docker run -p 8000:8000 expo-smooth-mcp:latest
+   # Visit http://localhost:8000/docs
+   
+   # Test stdio mode (for MCP Toolkit)
+   docker run -i expo-smooth-mcp:latest python src/expo_smooth_mcp/main.py --transport stdio
+   ```
+
+3. **Enable in Docker MCP Toolkit**
+   ```bash
+   # Enable server in MCP Toolkit
+   docker mcp server enable expo-smooth-mcp:latest
+   
+   # Verify server is listed
+   docker mcp server list
+   ```
+
+4. **Connect Claude Desktop via Docker Desktop UI**
+   - Open Docker Desktop
+   - Navigate to **MCP Toolkit** tab
+   - Go to **Clients** section
+   - Find **Claude Desktop** and click **Connect**
+   - Restart Claude Desktop
+   - Verify tools appear in Claude Desktop interface
+
+#### Part B: Fly.io Cloud Deployment
+
+1. **Deploy to Fly.io**
    ```bash
    # Install flyctl
    curl -L https://fly.io/install.sh | sh
@@ -491,17 +523,21 @@
    curl https://expo-smooth-mcp.fly.dev/health
    ```
 
-4. **Update Documentation**
-   - Create `docs/FLY_IO_DEPLOYMENT.md`
-   - Update `README.md` with new architecture
-   - Add client configuration examples
+2. **Update Documentation**
+   - Create `docs/DOCKER_MCP_TOOLKIT.md` - Local development guide
+   - Create `docs/FLY_IO_DEPLOYMENT.md` - Cloud deployment guide
+   - Update `README.md` with dual deployment options
+   - Add client configuration examples for both transports
 
 #### Acceptance Criteria
-- ✅ Docker image builds successfully (<500MB)
-- ✅ Application deployed to Fly.io
-- ✅ Health checks passing
-- ✅ Cold start < 1 second (verified with `flyctl logs`)
-- ✅ All endpoints accessible via public URL
+- ✅ Docker image builds successfully (<500MB, ideally <300MB)
+- ✅ Docker image uses ≤512MB RAM during runtime
+- ✅ Local: MCP Toolkit server enabled and discoverable
+- ✅ Local: Claude Desktop connects successfully via Docker Desktop UI
+- ✅ Cloud: Application deployed to Fly.io with 512MB memory limit
+- ✅ Cloud: Health checks passing
+- ✅ Cloud: Cold start < 1 second (verified with `flyctl logs`)
+- ✅ Cloud: All endpoints accessible via public URL
 
 ---
 
