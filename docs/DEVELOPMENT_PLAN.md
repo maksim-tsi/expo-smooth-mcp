@@ -15317,43 +15317,5972 @@ pytest -m "not slow"
 
 #### TASK-601: Update README.md
 **Estimated Time:** 2 hours | **Complexity:** Low | **Dependencies:** TASK-415
-**Description:** Rewrite README with new architecture diagram, installation instructions, both deployment options.
+
+**Description:**
+Completely rewrite README.md to reflect the new FastMCP architecture with dual deployment options. Include clear architecture diagram, quick start guide, feature overview, and links to detailed documentation.
+
+**Implementation Steps:**
+
+### 1. Create New README Structure (30 min)
+
+Update `README.md`:
+
+```markdown
+# Expo Smooth MCP Server
+
+> FMCG demand forecasting with exponential smoothing - FastAPI + FastMCP + Gradio
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
+[![FastMCP](https://img.shields.io/badge/FastMCP-2.0+-orange.svg)](https://github.com/jlowin/fastmcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A production-ready Model Context Protocol (MCP) server for demand forecasting with:
+- 🔮 **FastMCP Backend**: Async MCP server with dual-transport support (stdio + HTTP/SSE)
+- 📊 **Gradio UI**: Interactive web interface for manual forecasting
+- 🔐 **Authentication**: JWT-based OAuth2 security with rate limiting
+- 📈 **Monitoring**: Prometheus metrics and structured logging
+- 🚀 **Dual Deployment**: Local Docker MCP Toolkit + Cloud Fly.io
+
+## 📖 Table of Contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Deployment](#deployment)
+- [MCP Client Integration](#mcp-client-integration)
+- [API Documentation](#api-documentation)
+- [Development](#development)
+- [Testing](#testing)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
+
+## ✨ Features
+
+### Core Forecasting
+- **Exponential Smoothing**: Holt-Winters seasonal forecasting
+- **Multiple SKUs**: 5 FMCG products with 3 years of weekly sales data
+- **Configurable Parameters**: Adjustable alpha, beta, gamma smoothing parameters
+- **Visualization**: Interactive charts with historical data and predictions
+
+### MCP Integration
+- **Dual Transport**: stdio (local) + HTTP/SSE (cloud)
+- **FastMCP Tools**:
+  - `generate_forecast`: Generate forecast for product SKU
+  - `list_products`: Get available products
+  - `get_product_history`: Retrieve historical sales data
+- **Claude Desktop**: Native integration via stdio
+- **HTTP Clients**: API access for web/mobile apps
+
+### Production Features
+- **Authentication**: JWT tokens with OAuth2 password flow
+- **Rate Limiting**: Redis-based rate limiting per endpoint
+- **Monitoring**: Prometheus metrics + structured JSON logging
+- **Security**: Bcrypt password hashing, scope-based authorization
+- **Health Checks**: Comprehensive health endpoint with service status
+
+### User Interfaces
+- **Gradio UI**: Interactive web interface at `/gradio`
+- **REST API**: OpenAPI/Swagger docs at `/docs`
+- **MCP Endpoint**: Server-sent events at `/mcp/sse`
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Expo Smooth MCP Server                    │
+└─────────────────────────────────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+        ▼                     ▼                     ▼
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  MCP Tools   │     │  REST API    │     │  Gradio UI   │
+│              │     │              │     │              │
+│ stdio/HTTP   │     │ /api/forecast│     │   /gradio    │
+│ FastMCP      │     │ /docs        │     │   /         │
+└──────────────┘     └──────────────┘     └──────────────┘
+        │                     │                     │
+        └─────────────────────┼─────────────────────┘
+                              │
+                    ┌─────────▼──────────┐
+                    │  Business Logic    │
+                    │                    │
+                    │  - forecasting.py  │
+                    │  - preprocessing.py│
+                    └─────────┬──────────┘
+                              │
+                    ┌─────────▼──────────┐
+                    │  Data Layer        │
+                    │                    │
+                    │  FMCG Dataset      │
+                    │  (CSV/Pandas)      │
+                    └────────────────────┘
+
+Production Stack:
+- FastAPI: Web framework
+- FastMCP: MCP server implementation
+- Gradio: UI framework
+- Redis: Rate limiting
+- Prometheus: Metrics
+- Docker: Containerization
+- Fly.io: Cloud hosting
+```
+
+## 🚀 Quick Start
+
+### Option 1: Docker MCP Toolkit (Local - Recommended for Development)
+
+```bash
+# Clone repository
+git clone https://github.com/your-org/expo-smooth-mcp.git
+cd expo-smooth-mcp
+
+# Start with Docker MCP Toolkit
+docker-mcp-toolkit start expo-smooth-mcp
+
+# Configure Claude Desktop
+# Add to ~/Library/Application Support/Claude/claude_desktop_config.json:
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "expo-smooth-mcp",
+        "python",
+        "-m",
+        "expo_smooth_mcp"
+      ]
+    }
+  }
+}
+
+# Access services:
+# - Gradio UI: http://localhost:8000/gradio
+# - API Docs: http://localhost:8000/docs
+# - Claude Desktop: Use MCP tools
+```
+
+### Option 2: Fly.io (Production - Public Access)
+
+```bash
+# Install Fly CLI
+curl -L https://fly.io/install.sh | sh
+
+# Deploy
+fly launch
+fly deploy
+
+# Your server is now live at: https://your-app.fly.dev
+
+# Configure Claude Desktop for HTTP:
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "url": "https://your-app.fly.dev/mcp/sse"
+    }
+  }
+}
+```
+
+## 📦 Installation
+
+### Prerequisites
+- Python 3.10+
+- Docker (for local deployment)
+- Fly CLI (for cloud deployment)
+- Redis (for rate limiting)
+
+### Local Development
+
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set environment variables
+export SECRET_KEY="your-secret-key-min-32-chars"
+export REDIS_URL="redis://localhost:6379"
+
+# Start Redis
+brew install redis
+brew services start redis
+
+# Run development server
+python main.py
+
+# Server runs at http://localhost:8000
+```
+
+## 🌐 Deployment
+
+### Docker MCP Toolkit (Local)
+
+**Perfect for:** Claude Desktop integration, local development
+
+See [Docker MCP Toolkit Guide](docs/DOCKER_MCP_TOOLKIT_GUIDE.md)
+
+```bash
+# Build and start
+docker-mcp-toolkit start expo-smooth-mcp
+
+# View logs
+docker logs -f expo-smooth-mcp
+
+# Stop
+docker-mcp-toolkit stop expo-smooth-mcp
+```
+
+### Fly.io (Cloud)
+
+**Perfect for:** Production, public access, HTTP/SSE MCP clients
+
+See [Fly.io Deployment Guide](docs/FLY_IO_DEPLOYMENT.md)
+
+```bash
+# Initialize
+fly launch
+
+# Set secrets
+fly secrets set SECRET_KEY="your-secret-key"
+fly secrets set REDIS_URL="redis://your-redis-url"
+
+# Deploy
+fly deploy
+
+# Monitor
+fly logs
+fly status
+```
+
+## 🔌 MCP Client Integration
+
+### Claude Desktop
+
+**Stdio (Local):**
+```json
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "command": "docker",
+      "args": ["exec", "-i", "expo-smooth-mcp", "python", "-m", "expo_smooth_mcp"]
+    }
+  }
+}
+```
+
+**HTTP (Cloud):**
+```json
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "url": "https://your-app.fly.dev/mcp/sse"
+    }
+  }
+}
+```
+
+### Other MCP Clients
+
+See [Client Integration Guide](docs/CLIENT_INTEGRATION_GUIDE.md) for:
+- Cursor
+- VS Code MCP extension
+- Custom MCP clients
+- Authentication setup
+
+## 📚 API Documentation
+
+### REST API
+
+**Swagger UI:** http://localhost:8000/docs
+
+**Key Endpoints:**
+- `POST /api/forecast`: Generate forecast (authenticated)
+- `POST /token`: Get JWT token
+- `GET /users/me`: Get current user info
+- `GET /health`: Health check
+- `GET /metrics`: Prometheus metrics
+
+### MCP Tools
+
+**Available via Claude Desktop:**
+
+1. **generate_forecast**
+   ```
+   Generate forecast for product SKU with configurable parameters
+   Args: sku, forecast_horizon, alpha, beta, gamma
+   ```
+
+2. **list_products**
+   ```
+   List all available product SKUs
+   Returns: Array of SKU IDs
+   ```
+
+3. **get_product_history**
+   ```
+   Get historical sales data for product
+   Args: sku
+   ```
+
+See [API Documentation](docs/API_DOCUMENTATION.md) for complete reference.
+
+## 🛠️ Development
+
+### Project Structure
+
+```
+expo-smooth-mcp/
+├── src/
+│   └── expo_smooth_mcp/
+│       ├── __init__.py
+│       ├── forecasting.py       # Core forecasting logic
+│       ├── preprocessing.py     # Data preprocessing
+│       ├── security.py          # Authentication & authorization
+│       ├── redis_config.py      # Redis connection
+│       ├── rate_limits.py       # Rate limiting
+│       ├── logging_config.py    # Structured logging
+│       ├── metrics.py           # Prometheus metrics
+│       └── middleware.py        # Request logging
+├── tests/                       # Test suite
+├── docs/                        # Documentation
+├── main.py                      # FastAPI application
+├── Dockerfile                   # Docker image
+├── fly.toml                     # Fly.io configuration
+└── requirements.txt             # Python dependencies
+```
+
+### Running Tests
+
+```bash
+# All tests
+pytest
+
+# With coverage
+pytest --cov=src/expo_smooth_mcp --cov-report=html
+
+# Specific test categories
+pytest tests/test_forecasting.py -v
+pytest tests/test_security_comprehensive.py -v
+pytest tests/test_rate_limiting.py -v
+
+# Open coverage report
+open htmlcov/index.html
+```
+
+### Code Quality
+
+```bash
+# Linting
+ruff check src/
+
+# Type checking
+mypy src/
+
+# Security scanning
+bandit -r src/
+pip-audit
+
+# Format code
+black src/ tests/
+```
+
+## 📊 Testing
+
+### Unit Tests
+- Forecasting logic: 15+ tests
+- Security: 30+ tests
+- Rate limiting: 10+ tests
+- API endpoints: 20+ tests
+
+### Integration Tests
+- MCP tool handlers
+- Authentication flows
+- Rate limiting enforcement
+
+### Performance Tests
+- Latency benchmarks
+- Load testing with Locust
+- P50, P95, P99 metrics
+
+See [Test Plan](docs/TEST_PLAN.md) for complete testing strategy.
+
+## 📖 Documentation
+
+- [Development Plan](docs/DEVELOPMENT_PLAN.md) - Complete implementation roadmap
+- [Docker MCP Toolkit Guide](docs/DOCKER_MCP_TOOLKIT_GUIDE.md) - Local deployment
+- [Fly.io Deployment](docs/FLY_IO_DEPLOYMENT.md) - Cloud deployment
+- [Client Integration](docs/CLIENT_INTEGRATION_GUIDE.md) - MCP client setup
+- [API Documentation](docs/API_DOCUMENTATION.md) - REST and MCP APIs
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Security](docs/SECURITY_CHECKLIST.md) - Security features and best practices
+- [Metrics](docs/METRICS.md) - Prometheus metrics guide
+
+## 🤝 Contributing
+
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes with tests
+4. Run test suite (`pytest`)
+5. Commit changes (`git commit -m 'Add amazing feature'`)
+6. Push to branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+## 📄 License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [FastAPI](https://fastapi.tiangolo.com/) - Modern web framework
+- [FastMCP](https://github.com/jlowin/fastmcp) - MCP server implementation
+- [Gradio](https://gradio.app/) - UI framework
+- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification
+- [Anthropic Claude](https://claude.ai/) - MCP client integration
+
+## 📧 Contact
+
+- **Issues**: https://github.com/your-org/expo-smooth-mcp/issues
+- **Discussions**: https://github.com/your-org/expo-smooth-mcp/discussions
+- **Email**: your-email@example.com
+
+## 🗺️ Roadmap
+
+- [ ] Multi-model support (ARIMA, Prophet, LSTM)
+- [ ] Real-time data ingestion
+- [ ] Multi-tenancy with workspace isolation
+- [ ] Advanced visualization dashboards
+- [ ] Custom forecast model training
+- [ ] Integration with external data sources
+
+---
+
+**Built with ❤️ for the MCP ecosystem**
+```
+
+### 2. Add Architecture Diagram (20 min)
+
+Create `docs/ARCHITECTURE.md`:
+
+```markdown
+# Architecture Overview
+
+## System Architecture
+
+[Include detailed architecture diagram here - can be created with draw.io, mermaid, or similar]
+
+## Component Descriptions
+
+### 1. FastAPI Application (main.py)
+- HTTP server running on port 8000
+- Handles REST API requests
+- Serves Gradio UI
+- Exposes MCP endpoint
+
+### 2. FastMCP Server
+- MCP tool handlers
+- Dual transport support (stdio + HTTP/SSE)
+- Integration with business logic
+
+### 3. Business Logic Layer
+- `forecasting.py`: Exponential smoothing implementation
+- `preprocessing.py`: Data cleaning and validation
+- Framework-agnostic, reusable code
+
+### 4. Security Layer
+- JWT authentication
+- OAuth2 password flow
+- Rate limiting with Redis
+- Scope-based authorization
+
+### 5. Monitoring Layer
+- Prometheus metrics
+- Structured JSON logging
+- Request tracing with IDs
+- Performance tracking
+
+### 6. Data Layer
+- FMCG dataset (CSV)
+- Pandas for data manipulation
+- No external database required
+
+## Request Flow
+
+### MCP Tool Request (stdio)
+1. Claude Desktop invokes tool via stdio
+2. FastMCP receives and parses request
+3. Tool handler validates parameters
+4. Business logic generates forecast
+5. Response returned via stdio
+
+### REST API Request
+1. Client sends HTTP POST to /api/forecast
+2. Authentication middleware validates JWT
+3. Rate limiting checks request quota
+4. Request logging captures details
+5. Business logic processes forecast
+6. Response returned with metrics
+
+### Gradio UI Request
+1. User accesses /gradio in browser
+2. Gradio renders interactive interface
+3. User inputs forecast parameters
+4. Gradio calls business logic directly
+5. Results displayed with visualization
+```
+
+### 3. Update Badges and Links (10 min)
+
+Ensure all links in README work:
+- Update GitHub URLs
+- Verify documentation links
+- Test all example commands
+
+### 4. Add Screenshots (20 min)
+
+Create `docs/screenshots/` directory with:
+- Gradio UI screenshot
+- API documentation (Swagger) screenshot
+- Claude Desktop integration screenshot
+- Metrics dashboard screenshot
+
+Add to README:
+```markdown
+## 📸 Screenshots
+
+### Gradio UI
+![Gradio Interface](docs/screenshots/gradio-ui.png)
+
+### API Documentation
+![Swagger UI](docs/screenshots/api-docs.png)
+
+### Claude Desktop Integration
+![Claude Desktop](docs/screenshots/claude-integration.png)
+```
+
+### 5. Create Feature Comparison Table (10 min)
+
+Add to README:
+
+```markdown
+## 📊 Deployment Comparison
+
+| Feature | Docker MCP Toolkit | Fly.io Cloud |
+|---------|-------------------|--------------|
+| **MCP Transport** | stdio | HTTP/SSE |
+| **Best For** | Claude Desktop | Web/Mobile Apps |
+| **Setup Time** | 5 minutes | 10 minutes |
+| **Cost** | Free | $5/month |
+| **Public Access** | No | Yes |
+| **Auto-scaling** | No | Yes |
+| **SSL/HTTPS** | N/A | Automatic |
+| **Custom Domain** | N/A | Supported |
+| **Monitoring** | Docker logs | Fly.io dashboard |
+```
+
+### 6. Write Quick Reference (30 min)
+
+Create `docs/QUICK_REFERENCE.md`:
+
+```markdown
+# Quick Reference
+
+## Common Commands
+
+### Development
+```bash
+# Start local server
+python main.py
+
+# Run tests
+pytest
+
+# Generate coverage
+pytest --cov
+```
+
+### Docker
+```bash
+# Build image
+docker build -t expo-smooth-mcp .
+
+# Run container
+docker run -p 8000:8000 expo-smooth-mcp
+
+# View logs
+docker logs expo-smooth-mcp
+```
+
+### Fly.io
+```bash
+# Deploy
+fly deploy
+
+# View logs
+fly logs
+
+# Scale
+fly scale count 2
+```
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SECRET_KEY` | - | JWT signing key (required) |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection |
+| `LOG_LEVEL` | `INFO` | Logging level |
+| `LOG_FORMAT` | `json` | Log format (json/text) |
+
+## API Quick Reference
+
+### Authentication
+```bash
+# Get token
+curl -X POST http://localhost:8000/token \
+  -d "username=testuser&password=testpass123"
+
+# Use token
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:8000/users/me
+```
+
+### Forecasting
+```bash
+# Generate forecast
+curl -X POST http://localhost:8000/api/forecast \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"sku": "PRODUCT_001", "forecast_horizon": 90}'
+```
+
+## MCP Tools
+
+### generate_forecast
+```
+Input:
+- sku: string (required)
+- forecast_horizon: int (default: 90)
+- alpha, beta, gamma: float (optional)
+
+Output:
+- forecast: array of predicted values
+- historical: array of historical data
+- metadata: forecast parameters
+```
+```
+
+**Testing Checklist:**
+- [ ] README.md completely rewritten
+- [ ] Architecture diagram created
+- [ ] Quick start guide for both deployments
+- [ ] Feature overview comprehensive
+- [ ] All links verified and working
+- [ ] Screenshots added
+- [ ] Deployment comparison table
+- [ ] Code examples tested
+- [ ] Quick reference guide created
+- [ ] Badges and shields updated
+
+**Acceptance Criteria:**
+- [ ] README.md reflects FastMCP architecture
+- [ ] Clear architecture diagram included
+- [ ] Quick start for Docker MCP Toolkit
+- [ ] Quick start for Fly.io deployment
+- [ ] Feature list comprehensive
+- [ ] API documentation links
+- [ ] MCP client integration examples
+- [ ] Screenshots of all interfaces
+- [ ] All documentation links work
+- [ ] Ready for deployment guide update (TASK-602)
 
 #### TASK-602: Update DEPLOYMENT_GUIDE.md
 **Estimated Time:** 1.5 hours | **Complexity:** Low | **Dependencies:** TASK-407, TASK-415
-**Description:** Replace HF Spaces guide with dual deployment guide (Docker MCP Toolkit + Fly.io).
+
+**Description:**
+Replace Hugging Face Spaces deployment guide with comprehensive dual deployment guide covering both Docker MCP Toolkit (local) and Fly.io (cloud) options with detailed comparisons and migration path.
+
+**Implementation Steps:**
+
+### 1. Rewrite DEPLOYMENT_GUIDE.md (40 min)
+
+Update `docs/DEPLOYMENT_GUIDE.md`:
+
+```markdown
+# Deployment Guide
+
+This guide covers both local and cloud deployment options for Expo Smooth MCP Server.
+
+## Table of Contents
+
+- [Deployment Options](#deployment-options)
+- [Option 1: Docker MCP Toolkit (Local)](#option-1-docker-mcp-toolkit-local)
+- [Option 2: Fly.io (Cloud)](#option-2-flyio-cloud)
+- [Deployment Comparison](#deployment-comparison)
+- [Migration Between Deployments](#migration-between-deployments)
+- [Production Checklist](#production-checklist)
+
+## Deployment Options
+
+### When to Use Each Option
+
+**Docker MCP Toolkit (Local)**
+- ✅ Claude Desktop integration (stdio transport)
+- ✅ Local development and testing
+- ✅ Private/offline usage
+- ✅ No cloud costs
+- ❌ No public access
+- ❌ Manual updates required
+
+**Fly.io (Cloud)**
+- ✅ Public HTTP/SSE access
+- ✅ Auto-scaling and redundancy
+- ✅ Custom domains with SSL
+- ✅ Automatic updates via CI/CD
+- ❌ Costs $4-5/month
+- ❌ Requires internet connection
+
+## Option 1: Docker MCP Toolkit (Local)
+
+### Prerequisites
+- Docker installed
+- Docker MCP Toolkit
+- Claude Desktop (for MCP integration)
+
+### Step 1: Install Docker MCP Toolkit
+
+```bash
+# Install via pip
+pip install docker-mcp-toolkit
+
+# Verify installation
+docker-mcp-toolkit --version
+```
+
+### Step 2: Create Project Structure
+
+```bash
+# Clone repository (if not already done)
+git clone https://github.com/your-org/expo-smooth-mcp.git
+cd expo-smooth-mcp
+
+# Ensure Dockerfile exists
+ls Dockerfile
+```
+
+### Step 3: Start Server
+
+```bash
+# Start with Docker MCP Toolkit
+docker-mcp-toolkit start expo-smooth-mcp
+
+# Verify it's running
+docker ps | grep expo-smooth-mcp
+
+# View logs
+docker logs -f expo-smooth-mcp
+```
+
+### Step 4: Configure Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+
+```json
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "expo-smooth-mcp",
+        "python",
+        "-m",
+        "expo_smooth_mcp"
+      ]
+    }
+  }
+}
+```
+
+Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+### Step 5: Test Integration
+
+1. Restart Claude Desktop
+2. Start new conversation
+3. Try MCP commands:
+   - "List available products"
+   - "Generate forecast for PRODUCT_001"
+
+### Step 6: Access Additional Interfaces
+
+While server is running:
+- **Gradio UI**: http://localhost:8000/gradio
+- **API Docs**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+
+### Troubleshooting Local Deployment
+
+**Container won't start:**
+```bash
+# Check Docker daemon
+docker ps
+
+# Rebuild image
+docker-mcp-toolkit stop expo-smooth-mcp
+docker-mcp-toolkit start expo-smooth-mcp --rebuild
+```
+
+**Claude Desktop can't connect:**
+- Verify container is running: `docker ps`
+- Check logs: `docker logs expo-smooth-mcp`
+- Ensure config.json syntax is valid
+
+**Port already in use:**
+```bash
+# Find process using port 8000
+lsof -i :8000
+
+# Kill process or change port in Dockerfile
+```
+
+See complete guide: [Docker MCP Toolkit Guide](DOCKER_MCP_TOOLKIT_GUIDE.md)
+
+## Option 2: Fly.io (Cloud)
+
+### Prerequisites
+- Fly.io account (free tier available)
+- Fly CLI installed
+- Redis instance (Upstash free tier recommended)
+
+### Step 1: Install Fly CLI
+
+```bash
+# macOS/Linux
+curl -L https://fly.io/install.sh | sh
+
+# Windows (PowerShell)
+iwr https://fly.io/install.ps1 -useb | iex
+
+# Verify
+fly version
+```
+
+### Step 2: Login to Fly.io
+
+```bash
+# Authenticate
+fly auth login
+
+# Verify account
+fly auth whoami
+```
+
+### Step 3: Initialize Application
+
+```bash
+# From project root
+cd expo-smooth-mcp
+
+# Launch (interactive setup)
+fly launch
+
+# Answer prompts:
+# - App name: [your-app-name]
+# - Region: Choose closest to users
+# - Database: No (we use external Redis)
+# - Deploy: No (we'll configure first)
+```
+
+### Step 4: Configure Secrets
+
+```bash
+# Set JWT secret key
+fly secrets set SECRET_KEY="$(openssl rand -base64 32)"
+
+# Set Redis URL (from Upstash)
+fly secrets set REDIS_URL="redis://default:password@host:port"
+
+# Verify secrets
+fly secrets list
+```
+
+### Step 5: Deploy Application
+
+```bash
+# Deploy
+fly deploy
+
+# Monitor deployment
+fly logs
+
+# Check status
+fly status
+```
+
+### Step 6: Verify Deployment
+
+```bash
+# Get app URL
+fly info
+
+# Test health endpoint
+curl https://your-app.fly.dev/health
+
+# Test API docs
+open https://your-app.fly.dev/docs
+```
+
+### Step 7: Configure Custom Domain (Optional)
+
+```bash
+# Add domain
+fly certs create your-domain.com
+
+# Get DNS records
+fly certs show your-domain.com
+
+# Add to DNS:
+# A record: @ -> [Fly.io IP]
+# AAAA record: @ -> [Fly.io IPv6]
+
+# Verify SSL
+fly certs check your-domain.com
+```
+
+### Troubleshooting Cloud Deployment
+
+**Deployment fails:**
+```bash
+# Check build logs
+fly logs
+
+# Rebuild
+fly deploy --strategy=rolling
+```
+
+**Application crashes:**
+```bash
+# View detailed logs
+fly logs --app your-app
+
+# Check resource usage
+fly status --all
+
+# Scale up if needed
+fly scale memory 1024
+```
+
+**Redis connection errors:**
+- Verify REDIS_URL secret is set
+- Test Redis connection from your local machine
+- Check Upstash Redis dashboard for status
+
+See complete guide: [Fly.io Deployment Guide](FLY_IO_DEPLOYMENT.md)
+
+## Deployment Comparison
+
+| Aspect | Docker MCP Toolkit | Fly.io Cloud |
+|--------|-------------------|---------------|
+| **Setup Time** | 5 minutes | 15 minutes |
+| **Cost** | Free | ~$5/month |
+| **MCP Transport** | stdio | HTTP/SSE |
+| **Public Access** | No | Yes |
+| **Claude Desktop** | ✅ Native | ⚠️ Remote |
+| **Web API** | ✅ Local only | ✅ Public |
+| **Gradio UI** | ✅ Local only | ✅ Public |
+| **Auto-scaling** | ❌ | ✅ |
+| **SSL/HTTPS** | N/A | ✅ Auto |
+| **Custom Domain** | N/A | ✅ |
+| **Monitoring** | Docker logs | Fly dashboard |
+| **Updates** | Manual rebuild | `fly deploy` |
+| **Backup** | Local disk | Fly volumes |
+| **Redis** | Local/optional | Required |
+
+## Migration Between Deployments
+
+### From Docker to Fly.io
+
+```bash
+# 1. Test locally first
+docker-mcp-toolkit start expo-smooth-mcp
+# Verify everything works
+
+# 2. Commit any changes
+git add .
+git commit -m "Ready for cloud deployment"
+
+# 3. Deploy to Fly.io
+fly launch
+fly secrets set SECRET_KEY="..."
+fly secrets set REDIS_URL="..."
+fly deploy
+
+# 4. Update Claude Desktop config for HTTP
+# (if you want to use cloud MCP)
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "url": "https://your-app.fly.dev/mcp/sse"
+    }
+  }
+}
+
+# 5. Keep local deployment for testing
+# Both can coexist!
+```
+
+### From Fly.io to Docker
+
+```bash
+# 1. Pull latest code
+git pull origin main
+
+# 2. Start local Docker
+docker-mcp-toolkit start expo-smooth-mcp
+
+# 3. Update Claude Desktop config back to stdio
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "command": "docker",
+      "args": ["exec", "-i", "expo-smooth-mcp", "python", "-m", "expo_smooth_mcp"]
+    }
+  }
+}
+
+# 4. Optionally destroy Fly app
+fly apps destroy your-app
+```
+
+## Production Checklist
+
+### Security
+- [ ] SECRET_KEY is strong (32+ random characters)
+- [ ] Secrets stored in Fly.io (not in code)
+- [ ] Redis password configured
+- [ ] HTTPS enforced (automatic on Fly.io)
+- [ ] Rate limiting enabled
+- [ ] Authentication tested
+
+### Monitoring
+- [ ] Health endpoint responding
+- [ ] Metrics endpoint accessible
+- [ ] Logs structured and readable
+- [ ] Alerts configured (optional)
+
+### Performance
+- [ ] Benchmarks run and documented
+- [ ] Response times acceptable (<500ms p95)
+- [ ] Memory usage stable
+- [ ] Auto-scaling configured (Fly.io)
+
+### Documentation
+- [ ] README updated
+- [ ] API documentation current
+- [ ] Troubleshooting guide reviewed
+- [ ] Client integration tested
+
+### Testing
+- [ ] All unit tests passing
+- [ ] Integration tests passing
+- [ ] E2E tests successful
+- [ ] Load testing completed
+
+### Backup & Recovery
+- [ ] Git repository backed up
+- [ ] Fly.io volumes configured (if storing data)
+- [ ] Redis backup strategy defined
+- [ ] Rollback procedure documented
+
+## Next Steps
+
+- **Local Development**: See [Development Guide](DEVELOPMENT_GUIDE.md)
+- **Client Integration**: See [Client Integration Guide](CLIENT_INTEGRATION_GUIDE.md)
+- **API Reference**: See [API Documentation](API_DOCUMENTATION.md)
+- **Troubleshooting**: See [Troubleshooting Guide](TROUBLESHOOTING.md)
+```
+
+### 2. Create Deployment Decision Tree (15 min)
+
+Create `docs/DEPLOYMENT_DECISION_TREE.md`:
+
+```markdown
+# Deployment Decision Tree
+
+Use this guide to choose the right deployment option.
+
+## Question 1: Who needs access?
+
+**Just me / My team (local network)**
+→ Use Docker MCP Toolkit
+→ [Go to Docker Setup](#docker-setup)
+
+**Public users / External clients**
+→ Use Fly.io
+→ [Go to Fly.io Setup](#flyio-setup)
+
+## Question 2: How will it be used?
+
+**Primarily with Claude Desktop**
+→ Use Docker MCP Toolkit (stdio is faster)
+→ [Go to Docker Setup](#docker-setup)
+
+**Web/Mobile apps or API clients**
+→ Use Fly.io (HTTP/SSE required)
+→ [Go to Fly.io Setup](#flyio-setup)
+
+## Question 3: What's your budget?
+
+**$0 (free)**
+→ Use Docker MCP Toolkit
+→ [Go to Docker Setup](#docker-setup)
+
+**$5-10/month acceptable**
+→ Use Fly.io (more features)
+→ [Go to Fly.io Setup](#flyio-setup)
+
+## Question 4: What's your scale?
+
+**Personal use / Small team**
+→ Use Docker MCP Toolkit
+→ [Go to Docker Setup](#docker-setup)
+
+**Production / Growing users**
+→ Use Fly.io (auto-scaling)
+→ [Go to Fly.io Setup](#flyio-setup)
+
+## Recommendation Matrix
+
+| Use Case | Recommended | Reasoning |
+|----------|-------------|-----------|
+| Claude Desktop only | Docker | Fastest stdio transport |
+| API for web app | Fly.io | Public HTTP access needed |
+| Development & testing | Docker | Quick iteration, no cost |
+| Production service | Fly.io | Reliability, monitoring |
+| Offline usage | Docker | No internet required |
+| Multi-client access | Fly.io | Scalability, SSL |
+
+## Can I use both?
+
+**Yes!** Many users run:
+- Docker locally for Claude Desktop (stdio)
+- Fly.io for web/mobile clients (HTTP)
+
+They can share the same codebase.
+```
+
+### 3. Test All Deployment Paths (20 min)
+
+Verify both deployment methods work:
+
+```bash
+# Test Docker deployment
+docker-mcp-toolkit start expo-smooth-mcp
+curl http://localhost:8000/health
+
+# Test Fly.io deployment (if deployed)
+fly status
+curl https://your-app.fly.dev/health
+```
+
+### 4. Create Deployment Troubleshooting (15 min)
+
+Add section to `docs/TROUBLESHOOTING.md`:
+
+```markdown
+## Deployment Issues
+
+### Docker MCP Toolkit
+
+**Issue**: Container fails to start
+**Solution**:
+```bash
+docker-mcp-toolkit logs expo-smooth-mcp
+# Check for errors, rebuild if needed
+docker-mcp-toolkit start expo-smooth-mcp --rebuild
+```
+
+### Fly.io
+
+**Issue**: Deployment fails
+**Solution**:
+```bash
+fly logs
+# Check for build errors
+fly deploy --strategy=rolling
+```
+
+**Issue**: App crashes on startup
+**Solution**:
+```bash
+# Check secrets are set
+fly secrets list
+
+# Increase resources
+fly scale memory 512
+```
+```
+
+**Testing Checklist:**
+- [ ] DEPLOYMENT_GUIDE.md rewritten
+- [ ] Both deployment options documented
+- [ ] Step-by-step instructions complete
+- [ ] Troubleshooting sections added
+- [ ] Deployment comparison table
+- [ ] Migration guide between options
+- [ ] Production checklist included
+- [ ] Decision tree created
+- [ ] All commands tested
+- [ ] Links to detailed guides work
+
+**Acceptance Criteria:**
+- [ ] DEPLOYMENT_GUIDE.md updated for FastMCP
+- [ ] Docker MCP Toolkit deployment complete
+- [ ] Fly.io deployment complete
+- [ ] Deployment comparison table
+- [ ] Migration path documented
+- [ ] Production checklist comprehensive
+- [ ] Troubleshooting for both options
+- [ ] Decision tree helps users choose
+- [ ] All commands verified
+- [ ] Ready for client integration guide (TASK-603)
 
 #### TASK-603: Create client integration guide
 **Estimated Time:** 2 hours | **Complexity:** Medium | **Dependencies:** TASK-406
-**Description:** Write guide for configuring MCP clients (Claude Desktop, Cursor, VS Code) for both stdio and HTTP.
+
+**Description:**
+Write comprehensive guide for configuring MCP clients (Claude Desktop, Cursor, VS Code) with examples for both stdio and HTTP transports, authentication setup, and troubleshooting.
+
+**Implementation Steps:**
+
+### 1. Create CLIENT_INTEGRATION_GUIDE.md (50 min)
+
+Create `docs/CLIENT_INTEGRATION_GUIDE.md`:
+
+```markdown
+# MCP Client Integration Guide
+
+Complete guide for integrating Expo Smooth MCP Server with various MCP clients.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Claude Desktop](#claude-desktop)
+- [Cursor](#cursor)
+- [VS Code MCP Extension](#vs-code-mcp-extension)
+- [Custom MCP Clients](#custom-mcp-clients)
+- [Authentication](#authentication)
+- [Troubleshooting](#troubleshooting)
+
+## Overview
+
+Expo Smooth MCP Server supports two transport methods:
+
+1. **stdio (Standard Input/Output)**
+   - Best for: Local development, Claude Desktop
+   - Pros: Fast, no network overhead
+   - Cons: Only works with local processes
+
+2. **HTTP/SSE (Server-Sent Events)**
+   - Best for: Remote servers, web clients
+   - Pros: Works over internet, scalable
+   - Cons: Slightly higher latency
+
+## Claude Desktop
+
+### Prerequisites
+- Claude Desktop installed
+- Expo Smooth MCP Server running (Docker or Fly.io)
+
+### Option 1: Local stdio (Recommended)
+
+**Requirements:**
+- Docker MCP Toolkit running locally
+- Server accessible at `localhost:8000`
+
+**Configuration:**
+
+Location:
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- Linux: `~/.config/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "expo-smooth-mcp",
+        "python",
+        "-m",
+        "expo_smooth_mcp"
+      ]
+    }
+  }
+}
+```
+
+**Verification:**
+1. Restart Claude Desktop completely (Quit, then reopen)
+2. Start new conversation
+3. Look for MCP tool indicators
+4. Try: "List available products for forecasting"
+
+### Option 2: Remote HTTP/SSE
+
+**Requirements:**
+- Server deployed to Fly.io or accessible HTTP endpoint
+- Public URL (e.g., `https://your-app.fly.dev`)
+
+**Configuration:**
+
+```json
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "url": "https://your-app.fly.dev/mcp/sse"
+    }
+  }
+}
+```
+
+**With Authentication (if required):**
+
+```json
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "url": "https://your-app.fly.dev/mcp/sse",
+      "headers": {
+        "Authorization": "Bearer your-jwt-token-here"
+      }
+    }
+  }
+}
+```
+
+### Testing in Claude Desktop
+
+Try these example prompts:
+
+1. **List Products**
+   ```
+   Show me all available product SKUs
+   ```
+
+2. **Generate Forecast**
+   ```
+   Generate a 90-day forecast for PRODUCT_001
+   ```
+
+3. **Get Historical Data**
+   ```
+   Show me the historical sales data for PRODUCT_002
+   ```
+
+4. **Custom Parameters**
+   ```
+   Generate a forecast for PRODUCT_003 with 120-day horizon
+   and alpha=0.3, beta=0.2, gamma=0.1
+   ```
+
+### Troubleshooting Claude Desktop
+
+**Issue**: Tools not appearing
+- Solution: Completely quit and restart Claude Desktop
+- Verify config JSON syntax: https://jsonlint.com/
+
+**Issue**: "Connection refused"
+- Solution: Check Docker container is running: `docker ps`
+- Verify port 8000 is accessible: `curl http://localhost:8000/health`
+
+**Issue**: "Tool execution failed"
+- Solution: Check container logs: `docker logs expo-smooth-mcp`
+- Ensure Python dependencies installed correctly
+
+## Cursor
+
+### Prerequisites
+- Cursor IDE installed
+- MCP extension enabled
+- Server running (local or remote)
+
+### Configuration
+
+1. Open Cursor Settings
+2. Navigate to Extensions → MCP
+3. Add server configuration
+
+**Local (stdio):**
+```json
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "command": "python",
+      "args": ["-m", "expo_smooth_mcp"],
+      "cwd": "/path/to/expo-smooth-mcp"
+    }
+  }
+}
+```
+
+**Remote (HTTP):**
+```json
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "url": "https://your-app.fly.dev/mcp/sse"
+    }
+  }
+}
+```
+
+### Using in Cursor
+
+1. Open command palette (Cmd/Ctrl + Shift + P)
+2. Type "MCP: Connect to Server"
+3. Select "expo-smooth-mcp"
+4. Use MCP commands in chat:
+   - "Generate forecast for PRODUCT_001"
+   - "List available products"
+
+## VS Code MCP Extension
+
+### Prerequisites
+- VS Code installed
+- MCP extension: `code --install-extension mcp.mcp-client`
+
+### Configuration
+
+Create `.vscode/mcp-servers.json` in your workspace:
+
+```json
+{
+  "expo-smooth-mcp": {
+    "command": "python",
+    "args": ["-m", "expo_smooth_mcp"],
+    "env": {
+      "PYTHONPATH": "${workspaceFolder}/src"
+    }
+  }
+}
+```
+
+Or for remote:
+
+```json
+{
+  "expo-smooth-mcp": {
+    "url": "https://your-app.fly.dev/mcp/sse",
+    "headers": {
+      "Authorization": "Bearer ${env:MCP_TOKEN}"
+    }
+  }
+}
+```
+
+### Usage in VS Code
+
+1. Open MCP panel (View → MCP Servers)
+2. Click "Connect" next to expo-smooth-mcp
+3. Use MCP tools in:
+   - Chat interface
+   - Command palette
+   - Code actions
+
+## Custom MCP Clients
+
+### Using MCP Python SDK
+
+```python
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+# Connect to stdio server
+server_params = StdioServerParameters(
+    command="python",
+    args=["-m", "expo_smooth_mcp"],
+)
+
+async with stdio_client(server_params) as (read, write):
+    async with ClientSession(read, write) as session:
+        # Initialize
+        await session.initialize()
+        
+        # List tools
+        tools = await session.list_tools()
+        print("Available tools:", tools)
+        
+        # Call tool
+        result = await session.call_tool(
+            "generate_forecast",
+            arguments={
+                "sku": "PRODUCT_001",
+                "forecast_horizon": 90
+            }
+        )
+        print("Forecast result:", result)
+```
+
+### Using HTTP/SSE Client
+
+```python
+import requests
+import json
+
+# Server URL
+base_url = "https://your-app.fly.dev"
+
+# Get auth token
+token_response = requests.post(
+    f"{base_url}/token",
+    data={"username": "user", "password": "pass"}
+)
+token = token_response.json()["access_token"]
+
+# Connect to SSE endpoint
+headers = {
+    "Authorization": f"Bearer {token}",
+    "Accept": "text/event-stream"
+}
+
+# Call MCP tool via HTTP
+response = requests.post(
+    f"{base_url}/mcp/call",
+    headers=headers,
+    json={
+        "tool": "generate_forecast",
+        "arguments": {
+            "sku": "PRODUCT_001",
+            "forecast_horizon": 90
+        }
+    }
+)
+
+result = response.json()
+print("Forecast:", result)
+```
+
+### JavaScript/TypeScript Client
+
+```typescript
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+
+// Connect to SSE endpoint
+const transport = new SSEClientTransport(
+  new URL('https://your-app.fly.dev/mcp/sse')
+);
+
+const client = new Client({
+  name: 'my-mcp-client',
+  version: '1.0.0',
+}, {
+  capabilities: {}
+});
+
+await client.connect(transport);
+
+// List tools
+const tools = await client.listTools();
+console.log('Available tools:', tools);
+
+// Call tool
+const result = await client.callTool({
+  name: 'generate_forecast',
+  arguments: {
+    sku: 'PRODUCT_001',
+    forecast_horizon: 90
+  }
+});
+
+console.log('Forecast result:', result);
+```
+
+## Authentication
+
+### Getting JWT Token
+
+If server requires authentication:
+
+```bash
+# Get token
+curl -X POST https://your-app.fly.dev/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=your-username&password=your-password"
+
+# Response
+{
+  "access_token": "eyJhbGc...",
+  "token_type": "bearer"
+}
+```
+
+### Using Token in Requests
+
+**HTTP Headers:**
+```
+Authorization: Bearer eyJhbGc...
+```
+
+**In MCP Config:**
+```json
+{
+  "headers": {
+    "Authorization": "Bearer eyJhbGc..."
+  }
+}
+```
+
+### Token Management
+
+Tokens expire after 30 minutes. To refresh:
+
+```bash
+curl -X POST https://your-app.fly.dev/token/refresh \
+  -H "Authorization: Bearer <old-token>"
+```
+
+## Troubleshooting
+
+### Connection Issues
+
+**stdio transport fails:**
+```bash
+# Check Python is accessible
+python --version
+
+# Test server directly
+python -m expo_smooth_mcp
+# Should start without errors
+
+# Check Docker if using containers
+docker ps | grep expo-smooth-mcp
+```
+
+**HTTP/SSE connection fails:**
+```bash
+# Test server is accessible
+curl https://your-app.fly.dev/health
+
+# Test SSE endpoint
+curl https://your-app.fly.dev/mcp/sse
+
+# Check authentication
+curl -H "Authorization: Bearer <token>" \
+  https://your-app.fly.dev/mcp/sse
+```
+
+### Tool Execution Issues
+
+**"Tool not found":**
+- Verify tool name: `generate_forecast` (not `generateForecast`)
+- Check available tools: Request `list_tools` first
+
+**"Invalid arguments":**
+- Verify argument names match tool schema
+- Check data types (sku: string, forecast_horizon: integer)
+- Ensure required arguments provided
+
+**"Timeout":**
+- Increase timeout in client config
+- Check server logs for slow queries
+- Verify network connection stable
+
+### Authentication Issues
+
+**"Unauthorized":**
+- Check token is valid and not expired
+- Verify token included in Authorization header
+- Format: `Bearer <token>` (note the space)
+
+**"Forbidden":**
+- Check user has required permissions/scopes
+- Verify rate limits not exceeded
+- Check IP not blocked
+
+### Performance Issues
+
+**Slow responses:**
+- Check server logs for errors
+- Monitor server resource usage
+- Consider scaling up (Fly.io: `fly scale memory 512`)
+- Use local deployment for development
+
+**Connection drops:**
+- Check network stability
+- Verify server uptime
+- Review rate limiting settings
+- Check client timeout settings
+
+## Best Practices
+
+### For Development
+1. Use Docker local deployment with stdio
+2. Enable debug logging
+3. Test tools individually before integration
+4. Keep tokens in environment variables
+
+### For Production
+1. Use Fly.io with HTTP/SSE
+2. Implement token refresh logic
+3. Handle errors gracefully
+4. Monitor rate limits
+5. Cache responses when appropriate
+
+### Security
+1. Never commit tokens to version control
+2. Use environment variables for secrets
+3. Rotate tokens regularly
+4. Use HTTPS for all HTTP/SSE connections
+5. Implement rate limiting on client side
+
+## Examples
+
+See `examples/` directory for complete working examples:
+- `claude_desktop_config.json` - Claude Desktop configurations
+- `cursor_mcp_config.json` - Cursor IDE configuration
+- `vscode_mcp_servers.json` - VS Code configuration
+- `python_client.py` - Python MCP client
+- `typescript_client.ts` - TypeScript MCP client
+
+## Support
+
+- **GitHub Issues**: https://github.com/your-org/expo-smooth-mcp/issues
+- **Discussions**: https://github.com/your-org/expo-smooth-mcp/discussions
+- **MCP Specification**: https://modelcontextprotocol.io/
+```
+
+### 2. Create Example Configuration Files (25 min)
+
+Create `examples/` directory with sample configurations:
+
+**`examples/claude_desktop_stdio.json`:**
+```json
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "expo-smooth-mcp",
+        "python",
+        "-m",
+        "expo_smooth_mcp"
+      ]
+    }
+  }
+}
+```
+
+**`examples/claude_desktop_http.json`:**
+```json
+{
+  "mcpServers": {
+    "expo-smooth-mcp": {
+      "url": "https://your-app.fly.dev/mcp/sse",
+      "headers": {
+        "Authorization": "Bearer your-token-here"
+      }
+    }
+  }
+}
+```
+
+**`examples/python_client.py`:**
+```python
+"""Example Python MCP client for Expo Smooth MCP Server."""
+
+import asyncio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+
+async def main():
+    """Main client function."""
+    # Configure server
+    server_params = StdioServerParameters(
+        command="python",
+        args=["-m", "expo_smooth_mcp"],
+    )
+    
+    # Connect to server
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # Initialize
+            await session.initialize()
+            print("✓ Connected to MCP server")
+            
+            # List available tools
+            tools_result = await session.list_tools()
+            print(f"\nAvailable tools: {len(tools_result.tools)}")
+            for tool in tools_result.tools:
+                print(f"  - {tool.name}: {tool.description}")
+            
+            # Call generate_forecast tool
+            print("\n\nGenerating forecast...")
+            result = await session.call_tool(
+                "generate_forecast",
+                arguments={
+                    "sku": "PRODUCT_001",
+                    "forecast_horizon": 90,
+                    "alpha": 0.2,
+                    "beta": 0.1,
+                    "gamma": 0.1
+                }
+            )
+            
+            print(f"✓ Forecast generated")
+            print(f"Result: {result.content[0].text[:200]}...")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### 3. Create Client Testing Checklist (15 min)
+
+Create `examples/CLIENT_TESTING_CHECKLIST.md`:
+
+```markdown
+# Client Testing Checklist
+
+Use this checklist to verify your MCP client integration.
+
+## Pre-Integration Tests
+
+- [ ] Server is running and accessible
+- [ ] Health endpoint responds: `/health`
+- [ ] API documentation accessible: `/docs`
+
+## Claude Desktop Integration
+
+### stdio (Local)
+- [ ] Docker container running
+- [ ] Config file syntax valid (check with jsonlint)
+- [ ] Config file in correct location
+- [ ] Claude Desktop fully restarted
+- [ ] Tools appear in Claude UI
+- [ ] Can list products
+- [ ] Can generate forecast
+- [ ] Can get historical data
+
+### HTTP (Remote)
+- [ ] Server accessible via HTTPS
+- [ ] SSE endpoint responds: `/mcp/sse`
+- [ ] Authentication token obtained (if required)
+- [ ] Config includes correct URL
+- [ ] Config includes auth headers (if required)
+- [ ] Claude Desktop restarted
+- [ ] Tools work correctly
+
+## Cursor Integration
+
+- [ ] MCP extension installed
+- [ ] Config file created
+- [ ] Server connection successful
+- [ ] Tools accessible in chat
+- [ ] Commands work as expected
+
+## VS Code Integration
+
+- [ ] MCP extension installed
+- [ ] Workspace config created
+- [ ] Server appears in MCP panel
+- [ ] Can connect to server
+- [ ] Tools accessible
+
+## Custom Client
+
+- [ ] MCP SDK installed
+- [ ] Can establish connection
+- [ ] Can list tools
+- [ ] Can call tools with arguments
+- [ ] Error handling works
+- [ ] Token refresh implemented (if HTTP)
+
+## Common Issues Checklist
+
+If integration fails, check:
+
+- [ ] Server logs for errors
+- [ ] Client logs for connection issues
+- [ ] Network connectivity
+- [ ] Authentication credentials
+- [ ] Rate limiting not exceeded
+- [ ] Correct tool names used
+- [ ] Correct argument format
+- [ ] Timeouts configured appropriately
+```
+
+### 4. Create Video Tutorial Script (Optional, 10 min)
+
+Create `docs/VIDEO_TUTORIAL_SCRIPT.md` for creating video tutorials:
+
+```markdown
+# Video Tutorial Scripts
+
+## Tutorial 1: Claude Desktop Integration (stdio)
+
+**Duration**: 3-5 minutes
+
+**Script:**
+1. Show Claude Desktop interface
+2. Navigate to config file location
+3. Open file in editor
+4. Add expo-smooth-mcp configuration
+5. Save and restart Claude Desktop
+6. Demonstrate using MCP tools
+7. Show successful forecast generation
+
+**Key Points:**
+- Config file location varies by OS
+- Must restart Claude Desktop completely
+- Tools appear automatically
+
+## Tutorial 2: Fly.io Deployment + HTTP Integration
+
+**Duration**: 5-7 minutes
+
+**Script:**
+1. Show existing Fly.io deployment
+2. Get app URL from `fly info`
+3. Test endpoint in browser
+4. Update Claude Desktop config for HTTP
+5. Restart and demonstrate
+6. Show same tools work remotely
+
+**Key Points:**
+- HTTP/SSE works over internet
+- Slightly higher latency than stdio
+- Can share with team
+```
+
+**Testing Checklist:**
+- [ ] CLIENT_INTEGRATION_GUIDE.md created
+- [ ] Claude Desktop stdio configuration documented
+- [ ] Claude Desktop HTTP configuration documented
+- [ ] Cursor integration documented
+- [ ] VS Code integration documented
+- [ ] Custom client examples provided
+- [ ] Python client example tested
+- [ ] Authentication guide complete
+- [ ] Troubleshooting section comprehensive
+- [ ] Example configurations provided
+- [ ] Testing checklist created
+
+**Acceptance Criteria:**
+- [ ] Complete guide for all major MCP clients
+- [ ] stdio and HTTP transport documented
+- [ ] Authentication setup explained
+- [ ] Working code examples for Python and TypeScript
+- [ ] Claude Desktop configuration tested
+- [ ] Cursor and VS Code documented
+- [ ] Troubleshooting guide comprehensive
+- [ ] Example configuration files provided
+- [ ] Testing checklist helps verification
+- [ ] Ready for API documentation (TASK-604)
 
 #### TASK-604: Document API endpoints
 **Estimated Time:** 1.5 hours | **Complexity:** Low | **Dependencies:** TASK-413
-**Description:** Create comprehensive API documentation with examples for all REST and MCP endpoints.
+
+**Description:**
+Create comprehensive API documentation with examples for all REST and MCP endpoints, including request/response formats, authentication requirements, and error codes.
+
+**Implementation Steps:**
+
+### 1. Create API_DOCUMENTATION.md (35 min)
+
+Create `docs/API_DOCUMENTATION.md`:
+
+```markdown
+# API Documentation
+
+Complete reference for all Expo Smooth MCP Server endpoints.
+
+## Base URL
+
+- **Local**: `http://localhost:8000`
+- **Production**: `https://your-app.fly.dev`
+
+## Authentication
+
+Most endpoints require JWT authentication.
+
+### Get Access Token
+
+```http
+POST /token
+Content-Type: application/x-www-form-urlencoded
+
+username=testuser&password=testpass123
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+
+**Use token in subsequent requests:**
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+## REST API Endpoints
+
+### Public Endpoints
+
+#### GET / - Root
+Get service information.
+
+**Request:**
+```http
+GET /
+```
+
+**Response:**
+```json
+{
+  "service": "Expo Smooth MCP Server",
+  "version": "2.0.0",
+  "status": "operational",
+  "endpoints": {
+    "api": "/api/forecast",
+    "docs": "/docs",
+    "gradio": "/gradio",
+    "mcp": "/mcp/sse",
+    "health": "/health"
+  }
+}
+```
+
+#### GET /health - Health Check
+Check server health and service status.
+
+**Request:**
+```http
+GET /health
+```
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-10-13T12:00:00Z",
+  "version": "2.0.0",
+  "services": {
+    "api": "healthy",
+    "mcp": "healthy",
+    "gradio": "healthy",
+    "redis": {
+      "status": "healthy",
+      "connected": true,
+      "version": "7.0.0"
+    }
+  },
+  "features": {
+    "forecasting": true,
+    "authentication": true,
+    "rate_limiting": true
+  }
+}
+```
+
+#### GET /docs - API Documentation
+Interactive Swagger UI documentation.
+
+**Request:**
+```http
+GET /docs
+```
+
+Returns HTML page with interactive API documentation.
+
+### Authentication Endpoints
+
+#### POST /token - Get Access Token
+Authenticate and receive JWT token.
+
+**Request:**
+```http
+POST /token
+Content-Type: application/x-www-form-urlencoded
+
+username=testuser&password=testpass123
+```
+
+**Response** (200 OK):
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+
+**Error** (401 Unauthorized):
+```json
+{
+  "detail": "Incorrect username or password"
+}
+```
+
+**Rate Limit:** 5 attempts per minute
+
+#### POST /token/refresh - Refresh Token
+Get new access token using existing valid token.
+
+**Request:**
+```http
+POST /token/refresh
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Response** (200 OK):
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+
+#### GET /users/me - Current User Info
+Get current authenticated user information.
+
+**Request:**
+```http
+GET /users/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Response** (200 OK):
+```json
+{
+  "username": "testuser",
+  "email": "test@example.com",
+  "full_name": "Test User",
+  "disabled": false
+}
+```
+
+**Error** (401 Unauthorized):
+```json
+{
+  "detail": "Could not validate credentials"
+}
+```
+
+### Forecasting Endpoints
+
+#### POST /api/forecast - Generate Forecast
+Generate demand forecast for a product SKU.
+
+**Authentication:** Required
+
+**Rate Limit:** 30 requests per minute (authenticated)
+
+**Request:**
+```http
+POST /api/forecast
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "sku": "PRODUCT_001",
+  "forecast_horizon": 90,
+  "alpha": 0.2,
+  "beta": 0.1,
+  "gamma": 0.1
+}
+```
+
+**Parameters:**
+- `sku` (string, required): Product SKU (PRODUCT_001 to PRODUCT_005)
+- `forecast_horizon` (integer, optional): Days to forecast (default: 90)
+- `alpha` (float, optional): Level smoothing (0-1, default: 0.2)
+- `beta` (float, optional): Trend smoothing (0-1, default: 0.1)
+- `gamma` (float, optional): Seasonal smoothing (0-1, default: 0.1)
+
+**Response** (200 OK):
+```json
+{
+  "metadata": {
+    "sku": "PRODUCT_001",
+    "forecast_start_date": "2024-01-01",
+    "forecast_end_date": "2024-03-31",
+    "forecast_horizon": 90,
+    "model": "Holt-Winters",
+    "parameters": {
+      "alpha": 0.2,
+      "beta": 0.1,
+      "gamma": 0.1,
+      "seasonal_periods": 52
+    }
+  },
+  "historical": [
+    {"date": "2021-01-01", "sales": 150.5},
+    {"date": "2021-01-08", "sales": 165.2},
+    ...
+  ],
+  "forecast": [
+    {"date": "2024-01-01", "predicted_sales": 180.5, "lower_bound": 160.0, "upper_bound": 200.0},
+    {"date": "2024-01-08", "predicted_sales": 185.2, "lower_bound": 165.0, "upper_bound": 205.0},
+    ...
+  ],
+  "performance_metrics": {
+    "mape": 8.5,
+    "rmse": 12.3,
+    "mae": 10.1
+  }
+}
+```
+
+**Error** (400 Bad Request):
+```json
+{
+  "detail": "Invalid SKU. Must be one of: PRODUCT_001, PRODUCT_002, PRODUCT_003, PRODUCT_004, PRODUCT_005"
+}
+```
+
+**Error** (401 Unauthorized):
+```json
+{
+  "detail": "Could not validate credentials"
+}
+```
+
+**Error** (429 Too Many Requests):
+```json
+{
+  "error": "Rate limit exceeded",
+  "detail": "Too many requests. Retry after 60 seconds",
+  "retry_after": 60
+}
+```
+
+### Monitoring Endpoints
+
+#### GET /metrics - Prometheus Metrics
+Prometheus-formatted metrics.
+
+**Request:**
+```http
+GET /metrics
+```
+
+**Response** (text/plain):
+```
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="POST",handler="/api/forecast",status="200"} 42
+...
+# HELP forecast_requests_total Total forecast requests
+# TYPE forecast_requests_total counter
+forecast_requests_total{sku="PRODUCT_001",status="success"} 35
+...
+```
+
+### Admin Endpoints
+
+#### GET /admin/stats - Server Statistics
+Get server statistics (admin only).
+
+**Authentication:** Required (admin scope)
+
+**Request:**
+```http
+GET /admin/stats
+Authorization: Bearer <admin-token>
+```
+
+**Response** (200 OK):
+```json
+{
+  "total_users": 5,
+  "total_skus": 5,
+  "server_version": "2.0.0",
+  "uptime_seconds": 86400
+}
+```
+
+**Error** (403 Forbidden):
+```json
+{
+  "detail": "Not enough permissions. Required scope: admin"
+}
+```
+
+#### GET /admin/redis - Redis Statistics
+Get Redis statistics (admin only).
+
+**Authentication:** Required (admin scope)
+
+**Request:**
+```http
+GET /admin/redis
+Authorization: Bearer <admin-token>
+```
+
+**Response** (200 OK):
+```json
+{
+  "memory_used_mb": 2.5,
+  "connected_clients": 3,
+  "total_commands": 1250,
+  "keyspace_hits": 980,
+  "keyspace_misses": 20,
+  "uptime_days": 7
+}
+```
+
+## MCP Endpoints
+
+### GET /mcp/sse - MCP Server-Sent Events
+MCP protocol endpoint for HTTP/SSE transport.
+
+**Authentication:** Optional (for public servers, required for authenticated servers)
+
+**Request:**
+```http
+GET /mcp/sse
+Authorization: Bearer <token>  (if required)
+Accept: text/event-stream
+```
+
+**Response:**
+Server-sent events stream following MCP protocol specification.
+
+## MCP Tools
+
+### generate_forecast
+
+Generate forecast for a product SKU.
+
+**Input Schema:**
+```json
+{
+  "sku": "string (required)",
+  "forecast_horizon": "integer (optional, default: 90)",
+  "alpha": "number (optional, default: 0.2)",
+  "beta": "number (optional, default: 0.1)",
+  "gamma": "number (optional, default: 0.1)"
+}
+```
+
+**Example:**
+```json
+{
+  "sku": "PRODUCT_001",
+  "forecast_horizon": 90,
+  "alpha": 0.2,
+  "beta": 0.1,
+  "gamma": 0.1
+}
+```
+
+**Output:**
+Returns forecast data including historical values, predictions, and metadata.
+
+### list_products
+
+List all available product SKUs.
+
+**Input Schema:**
+```json
+{}
+```
+
+**Output:**
+```json
+{
+  "products": ["PRODUCT_001", "PRODUCT_002", "PRODUCT_003", "PRODUCT_004", "PRODUCT_005"]
+}
+```
+
+### get_product_history
+
+Get historical sales data for a product.
+
+**Input Schema:**
+```json
+{
+  "sku": "string (required)"
+}
+```
+
+**Example:**
+```json
+{
+  "sku": "PRODUCT_001"
+}
+```
+
+**Output:**
+Returns array of historical sales data points with dates and values.
+
+## Error Codes
+
+| Code | Description | Common Causes |
+|------|-------------|---------------|
+| 400 | Bad Request | Invalid SKU, invalid parameters |
+| 401 | Unauthorized | Missing/invalid token, expired token |
+| 403 | Forbidden | Insufficient permissions/scopes |
+| 404 | Not Found | Endpoint doesn't exist |
+| 422 | Validation Error | Invalid data types, missing required fields |
+| 429 | Too Many Requests | Rate limit exceeded |
+| 500 | Internal Server Error | Server error, check logs |
+| 503 | Service Unavailable | Redis unavailable, service down |
+
+## Rate Limiting
+
+| Endpoint | Anonymous | Authenticated | Notes |
+|----------|-----------|---------------|-------|
+| `/token` | 5/min | N/A | Per IP |
+| `/api/forecast` | N/A | 30/min | Per user |
+| `/` (root) | 100/min | 500/min | Per IP/user |
+| `/health` | Unlimited | Unlimited | No limit |
+| `/metrics` | Unlimited | Unlimited | No limit |
+
+**Rate Limit Headers:**
+- `X-RateLimit-Limit`: Maximum requests per window
+- `X-RateLimit-Remaining`: Remaining requests
+- `X-RateLimit-Reset`: Unix timestamp when limit resets
+- `Retry-After`: Seconds to wait (when limited)
+
+## Request/Response Headers
+
+### Common Request Headers
+```http
+Authorization: Bearer <token>
+Content-Type: application/json
+Accept: application/json
+User-Agent: YourApp/1.0
+```
+
+### Common Response Headers
+```http
+Content-Type: application/json
+X-Request-ID: 550e8400-e29b-41d4-a716-446655440000
+X-RateLimit-Limit: 30
+X-RateLimit-Remaining: 25
+```
+
+## Code Examples
+
+### Python
+```python
+import requests
+
+# Get token
+token_response = requests.post(
+    "http://localhost:8000/token",
+    data={"username": "testuser", "password": "testpass123"}
+)
+token = token_response.json()["access_token"]
+
+# Generate forecast
+forecast_response = requests.post(
+    "http://localhost:8000/api/forecast",
+    headers={"Authorization": f"Bearer {token}"},
+    json={
+        "sku": "PRODUCT_001",
+        "forecast_horizon": 90
+    }
+)
+
+forecast_data = forecast_response.json()
+print(f"Forecast: {forecast_data['forecast']}")
+```
+
+### JavaScript
+```javascript
+// Get token
+const tokenResponse = await fetch('http://localhost:8000/token', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+  body: 'username=testuser&password=testpass123'
+});
+const {access_token} = await tokenResponse.json();
+
+// Generate forecast
+const forecastResponse = await fetch('http://localhost:8000/api/forecast', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${access_token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    sku: 'PRODUCT_001',
+    forecast_horizon: 90
+  })
+});
+
+const forecastData = await forecastResponse.json();
+console.log('Forecast:', forecastData.forecast);
+```
+
+### curl
+```bash
+# Get token
+TOKEN=$(curl -s -X POST http://localhost:8000/token \
+  -d "username=testuser&password=testpass123" \
+  | jq -r '.access_token')
+
+# Generate forecast
+curl -X POST http://localhost:8000/api/forecast \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sku": "PRODUCT_001",
+    "forecast_horizon": 90
+  }' | jq
+```
+
+## Testing
+
+Interactive API testing available at: `http://localhost:8000/docs`
+
+Use the "Authorize" button to enter your JWT token.
+```
+
+### 2. Add OpenAPI Schema Documentation (20 min)
+
+Ensure `main.py` has complete OpenAPI schema:
+
+```python
+app = FastAPI(
+    title="Expo Smooth MCP Server",
+    description="""
+    FMCG demand forecasting with exponential smoothing.
+    
+    ## Features
+    - 🔮 FastMCP integration with dual transport
+    - 📊 Holt-Winters seasonal forecasting
+    - 🔐 JWT authentication
+    - 📈 Prometheus metrics
+    
+    ## Authentication
+    Most endpoints require JWT token. Get token from `/token` endpoint.
+    """,
+    version="2.0.0",
+    contact={
+        "name": "Your Team",
+        "email": "your-email@example.com",
+    },
+    license_info={
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+)
+```
+
+### 3. Create API Testing Guide (15 min)
+
+Create `docs/API_TESTING.md`:
+
+```markdown
+# API Testing Guide
+
+## Using Swagger UI
+
+1. Navigate to `http://localhost:8000/docs`
+2. Click "Authorize" button
+3. Get token:
+   - Try out `/token` endpoint
+   - Use username: `testuser`, password: `testpass123`
+   - Copy `access_token` from response
+4. Enter token in authorization modal
+5. Click "Authorize"
+6. Now all protected endpoints will include token automatically
+
+## Using Postman
+
+### Import Collection
+1. Create new Postman collection
+2. Add base URL variable: `{{baseUrl}} = http://localhost:8000`
+3. Add token variable: `{{token}}`
+
+### Get Token Request
+```
+POST {{baseUrl}}/token
+Headers:
+  Content-Type: application/x-www-form-urlencoded
+Body (x-www-form-urlencoded):
+  username: testuser
+  password: testpass123
+
+Tests (to save token):
+pm.test("Save token", function() {
+    var jsonData = pm.response.json();
+    pm.collectionVariables.set("token", jsonData.access_token);
+});
+```
+
+### Forecast Request
+```
+POST {{baseUrl}}/api/forecast
+Headers:
+  Authorization: Bearer {{token}}
+  Content-Type: application/json
+Body (raw JSON):
+{
+  "sku": "PRODUCT_001",
+  "forecast_horizon": 90
+}
+```
+
+## Using HTTPie
+
+```bash
+# Get token
+http POST localhost:8000/token \\
+  username=testuser \\
+  password=testpass123
+
+# Save token
+TOKEN=$(http POST localhost:8000/token \\
+  username=testuser password=testpass123 \\
+  | jq -r '.access_token')
+
+# Use token
+http POST localhost:8000/api/forecast \\
+  Authorization:"Bearer $TOKEN" \\
+  sku=PRODUCT_001 \\
+  forecast_horizon:=90
+```
+
+## Testing Rate Limits
+
+```bash
+# Test token endpoint rate limit (5/min)
+for i in {1..7}; do
+  echo "Request $i:"
+  curl -X POST localhost:8000/token \\
+    -d "username=test&password=test" \\
+    -w "\nHTTP Status: %{http_code}\n"
+  sleep 1
+done
+```
+
+## Testing Authentication
+
+```bash
+# Without token (should fail)
+curl -X POST localhost:8000/api/forecast \\
+  -H "Content-Type: application/json" \\
+  -d '{"sku":"PRODUCT_001"}'
+
+# With invalid token (should fail)
+curl -X POST localhost:8000/api/forecast \\
+  -H "Authorization: Bearer invalid.token" \\
+  -H "Content-Type: application/json" \\
+  -d '{"sku":"PRODUCT_001"}'
+
+# With valid token (should succeed)
+curl -X POST localhost:8000/api/forecast \\
+  -H "Authorization: Bearer $TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"sku":"PRODUCT_001"}'
+```
+```
+
+### 4. Create Postman Collection (20 min)
+
+Create `examples/expo-smooth-mcp.postman_collection.json`:
+
+```json
+{
+  "info": {
+    "name": "Expo Smooth MCP Server",
+    "description": "API collection for Expo Smooth MCP Server",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Get Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {"key": "username", "value": "testuser"},
+                {"key": "password", "value": "testpass123"}
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/token",
+              "host": ["{{baseUrl}}"],
+              "path": ["token"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('token', jsonData.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forecasting",
+      "item": [
+        {
+          "name": "Generate Forecast",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"PRODUCT_001\",\n  \"forecast_horizon\": 90\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/forecast",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forecast"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health & Monitoring",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Metrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["metrics"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Testing Checklist:**
+- [ ] API_DOCUMENTATION.md created
+- [ ] All REST endpoints documented
+- [ ] All MCP tools documented
+- [ ] Request/response formats specified
+- [ ] Authentication requirements clear
+- [ ] Error codes documented
+- [ ] Rate limits documented
+- [ ] Code examples in multiple languages
+- [ ] API_TESTING.md guide created
+- [ ] Postman collection provided
+- [ ] OpenAPI schema complete
+
+**Acceptance Criteria:**
+- [ ] Complete API documentation created
+- [ ] All REST endpoints documented with examples
+- [ ] All MCP tools documented
+- [ ] Authentication flow explained
+- [ ] Error codes and messages documented
+- [ ] Rate limiting documented
+- [ ] Code examples in Python, JavaScript, curl
+- [ ] Postman collection provided
+- [ ] API testing guide created
+- [ ] Ready for troubleshooting guide (TASK-605)
 
 #### TASK-605: Create troubleshooting guide
 **Estimated Time:** 2 hours | **Complexity:** Low | **Dependencies:** TASK-413
-**Description:** Document common issues, solutions, debugging steps for both local and cloud deployments.
+
+**Description:**
+Document common issues, solutions, and debugging steps for both local and cloud deployments covering installation, configuration, runtime, and integration problems.
+
+**Implementation Steps:**
+
+### 1. Create TROUBLESHOOTING.md (60 min)
+
+Create comprehensive `docs/TROUBLESHOOTING.md`:
+
+```markdown
+# Troubleshooting Guide
+
+Common issues and solutions for Expo Smooth MCP Server.
+
+## Table of Contents
+
+- [Installation Issues](#installation-issues)
+- [Docker Issues](#docker-issues)
+- [Authentication Issues](#authentication-issues)
+- [MCP Integration Issues](#mcp-integration-issues)
+- [Runtime Errors](#runtime-errors)
+- [Performance Issues](#performance-issues)
+- [Deployment Issues](#deployment-issues)
+- [Redis Issues](#redis-issues)
+
+## Installation Issues
+
+### Issue: pip install fails with dependency conflicts
+
+**Symptoms:**
+```
+ERROR: Cannot install package due to conflicting dependencies
+```
+
+**Solution:**
+```bash
+# Create fresh virtual environment
+python -m venv venv --clear
+source venv/bin/activate
+
+# Upgrade pip
+pip install --upgrade pip
+
+# Install from requirements
+pip install -r requirements.txt
+
+# If still fails, install problematic packages individually
+pip install fastapi uvicorn
+pip install fastmcp
+pip install pandas numpy statsmodels
+```
+
+### Issue: Python version incompatibility
+
+**Symptoms:**
+```
+ERROR: This package requires Python 3.10 or later
+```
+
+**Solution:**
+```bash
+# Check Python version
+python --version
+
+# Install Python 3.10+ if needed
+# macOS:
+brew install python@3.10
+
+# Update virtual environment
+python3.10 -m venv venv
+```
+
+### Issue: Missing system dependencies
+
+**Symptoms:**
+```
+ERROR: Could not build wheels for package
+```
+
+**Solution:**
+```bash
+# macOS: Install build tools
+xcode-select --install
+
+# Linux: Install build essentials
+sudo apt-get install build-essential python3-dev
+
+# Retry installation
+pip install -r requirements.txt
+```
+
+## Docker Issues
+
+### Issue: Docker container won't start
+
+**Symptoms:**
+```
+Error: Container exited with code 1
+```
+
+**Diagnosis:**
+```bash
+# Check container logs
+docker logs expo-smooth-mcp
+
+# Check for port conflicts
+lsof -i :8000
+
+# Inspect container
+docker inspect expo-smooth-mcp
+```
+
+**Solutions:**
+
+**Port conflict:**
+```bash
+# Kill process using port 8000
+lsof -i :8000 | grep LISTEN | awk '{print $2}' | xargs kill
+
+# Or change port in Dockerfile
+ENV PORT=8080
+```
+
+**Image build failure:**
+```bash
+# Rebuild image
+docker build -t expo-smooth-mcp . --no-cache
+
+# Check Dockerfile syntax
+docker build -t expo-smooth-mcp . --progress=plain
+```
+
+**Permission issues:**
+```bash
+# Fix Docker permissions
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+### Issue: Docker MCP Toolkit connection fails
+
+**Symptoms:**
+- Claude Desktop can't connect
+- "Connection refused" errors
+
+**Solution:**
+```bash
+# Verify container is running
+docker ps | grep expo-smooth-mcp
+
+# Test from host
+docker exec -it expo-smooth-mcp python -m expo_smooth_mcp
+
+# Check network
+docker network ls
+docker network inspect bridge
+
+# Restart container
+docker-mcp-toolkit stop expo-smooth-mcp
+docker-mcp-toolkit start expo-smooth-mcp
+```
+
+### Issue: Container runs but API not accessible
+
+**Symptoms:**
+- Container running
+- Can't access http://localhost:8000
+
+**Solution:**
+```bash
+# Check port mapping
+docker ps --format "{{.Names}}: {{.Ports}}"
+
+# Ensure port is mapped
+docker run -p 8000:8000 expo-smooth-mcp
+
+# Check firewall
+# macOS:
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add $(which docker)
+
+# Test from inside container
+docker exec -it expo-smooth-mcp curl http://localhost:8000/health
+```
+
+## Authentication Issues
+
+### Issue: "Could not validate credentials"
+
+**Symptoms:**
+```json
+{
+  "detail": "Could not validate credentials"
+}
+```
+
+**Solutions:**
+
+**Token expired:**
+```bash
+# Get new token
+curl -X POST http://localhost:8000/token \\
+  -d "username=testuser&password=testpass123"
+```
+
+**Invalid token format:**
+```bash
+# Ensure "Bearer " prefix
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+#              ^^^^^^ space required
+```
+
+**Wrong SECRET_KEY:**
+```bash
+# Check SECRET_KEY is set
+echo $SECRET_KEY
+
+# Set if missing (32+ characters required)
+export SECRET_KEY="$(openssl rand -base64 32)"
+
+# Restart server
+```
+
+### Issue: "Incorrect username or password"
+
+**Symptoms:**
+```json
+{
+  "detail": "Incorrect username or password"
+}
+```
+
+**Solution:**
+```bash
+# Use correct test credentials
+Username: testuser
+Password: testpass123
+
+# Or create new user
+python scripts/create_user.py myuser mypassword
+```
+
+### Issue: Rate limit exceeded on /token
+
+**Symptoms:**
+```json
+{
+  "error": "Rate limit exceeded",
+  "retry_after": 60
+}
+```
+
+**Solution:**
+```bash
+# Wait for rate limit reset (60 seconds)
+sleep 60
+
+# Or clear Redis rate limit cache
+redis-cli FLUSHDB
+
+# Or restart Redis
+brew services restart redis
+```
+
+## MCP Integration Issues
+
+### Issue: Claude Desktop doesn't show tools
+
+**Symptoms:**
+- No MCP tools visible in Claude
+- No error messages
+
+**Solution:**
+```bash
+# 1. Check config file location
+# macOS:
+cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
+
+# Windows:
+type %APPDATA%\Claude\claude_desktop_config.json
+
+# 2. Validate JSON syntax
+cat claude_desktop_config.json | python -m json.tool
+
+# 3. Completely restart Claude Desktop
+# Quit (Cmd+Q), not just close window
+# Then reopen
+
+# 4. Check container is running
+docker ps | grep expo-smooth-mcp
+
+# 5. Test stdio manually
+docker exec -i expo-smooth-mcp python -m expo_smooth_mcp
+```
+
+### Issue: "Tool execution failed"
+
+**Symptoms:**
+- Tools appear but fail when used
+- Error in Claude Desktop
+
+**Diagnosis:**
+```bash
+# Check container logs
+docker logs -f expo-smooth-mcp
+
+# Test tool manually
+docker exec -it expo-smooth-mcp python -c "
+from expo_smooth_mcp import generate_forecast_for_sku
+result = generate_forecast_for_sku('PRODUCT_001', 90)
+print(result)
+"
+```
+
+**Solutions:**
+
+**Missing data:**
+```bash
+# Ensure data file exists
+docker exec -it expo-smooth-mcp ls -l /app/data/
+```
+
+**Python error:**
+```bash
+# Check dependencies
+docker exec -it expo-smooth-mcp pip list
+
+# Reinstall if needed
+docker-mcp-toolkit start expo-smooth-mcp --rebuild
+```
+
+### Issue: HTTP/SSE MCP connection fails
+
+**Symptoms:**
+- Remote MCP endpoint not working
+- Timeout errors
+
+**Solution:**
+```bash
+# Test endpoint
+curl https://your-app.fly.dev/mcp/sse
+
+# Check authentication
+curl -H "Authorization: Bearer <token>" \\
+  https://your-app.fly.dev/mcp/sse
+
+# Verify server is running
+fly status
+
+# Check logs
+fly logs
+```
+
+## Runtime Errors
+
+### Issue: "SKU not found"
+
+**Symptoms:**
+```json
+{
+  "detail": "Invalid SKU. Must be one of: PRODUCT_001, ..."
+}
+```
+
+**Solution:**
+```bash
+# List available SKUs
+curl http://localhost:8000/api/list_products
+
+# Use correct SKU
+Valid: PRODUCT_001, PRODUCT_002, PRODUCT_003, PRODUCT_004, PRODUCT_005
+Invalid: Product_001, product-001, PRODUCT_1
+```
+
+### Issue: Forecast generation slow
+
+**Symptoms:**
+- Forecast takes >5 seconds
+- Timeout errors
+
+**Diagnosis:**
+```bash
+# Check system resources
+docker stats expo-smooth-mcp
+
+# Check data size
+docker exec -it expo-smooth-mcp ls -lh /app/data/
+```
+
+**Solutions:**
+
+**Increase memory:**
+```bash
+# Docker
+docker run -m 1g expo-smooth-mcp
+
+# Fly.io
+fly scale memory 512
+```
+
+**Optimize parameters:**
+```json
+{
+  "sku": "PRODUCT_001",
+  "forecast_horizon": 30,  // Reduce horizon
+  "alpha": 0.2,
+  "beta": 0.1,
+  "gamma": 0.1
+}
+```
+
+### Issue: Server crashes on startup
+
+**Symptoms:**
+- Container exits immediately
+- "Application startup failed"
+
+**Diagnosis:**
+```bash
+# Check logs
+docker logs expo-smooth-mcp
+
+# Common issues:
+# - Missing SECRET_KEY
+# - Port already in use
+# - Redis connection failed
+```
+
+**Solutions:**
+
+**Missing SECRET_KEY:**
+```bash
+# Set environment variable
+docker run -e SECRET_KEY="your-secret-key" expo-smooth-mcp
+```
+
+**Redis unavailable:**
+```bash
+# Start Redis
+brew services start redis
+
+# Or use environment variable
+docker run -e REDIS_URL="redis://localhost:6379" expo-smooth-mcp
+```
+
+## Performance Issues
+
+### Issue: High memory usage
+
+**Symptoms:**
+- Container using >1GB RAM
+- Server becoming unresponsive
+
+**Diagnosis:**
+```bash
+# Check memory usage
+docker stats expo-smooth-mcp
+
+# Check Python memory
+docker exec -it expo-smooth-mcp python -c "
+import psutil
+print(f'Memory: {psutil.Process().memory_info().rss / 1024 ** 2:.2f} MB')
+"
+```
+
+**Solutions:**
+
+**Limit memory:**
+```bash
+# Docker
+docker run -m 512m expo-smooth-mcp
+
+# Fly.io
+fly scale memory 512
+```
+
+**Profile memory:**
+```bash
+pip install memory-profiler
+python -m memory_profiler main.py
+```
+
+### Issue: Slow API responses
+
+**Symptoms:**
+- Response times >1 second
+- P95 latency high
+
+**Diagnosis:**
+```bash
+# Check endpoint metrics
+curl http://localhost:8000/admin/metrics
+
+# Benchmark specific endpoint
+time curl -X POST http://localhost:8000/api/forecast \\
+  -H "Authorization: Bearer $TOKEN" \\
+  -d '{"sku":"PRODUCT_001"}'
+```
+
+**Solutions:**
+
+**Enable caching:**
+- Implement Redis caching for forecasts
+- Cache expensive calculations
+
+**Optimize data loading:**
+```python
+# Load data once at startup, not per request
+# Use pandas efficiently
+```
+
+**Scale horizontally:**
+```bash
+# Fly.io
+fly scale count 2
+```
+
+## Deployment Issues
+
+### Issue: Fly.io deployment fails
+
+**Symptoms:**
+```
+Error: deployment failed
+```
+
+**Diagnosis:**
+```bash
+# Check build logs
+fly logs
+
+# Verify fly.toml
+cat fly.toml
+
+# Check secrets
+fly secrets list
+```
+
+**Solutions:**
+
+**Build failure:**
+```bash
+# Test build locally
+docker build -t expo-smooth-mcp .
+
+# Deploy with verbose output
+fly deploy --verbose
+
+# Use different build strategy
+fly deploy --strategy rolling
+```
+
+**Secrets not set:**
+```bash
+# Set required secrets
+fly secrets set SECRET_KEY="$(openssl rand -base64 32)"
+fly secrets set REDIS_URL="redis://..."
+```
+
+**Memory issues:**
+```bash
+# Increase memory
+fly scale memory 512
+
+# Check memory usage
+fly scale show
+```
+
+### Issue: Custom domain not working
+
+**Symptoms:**
+- Domain not accessible
+- SSL certificate issues
+
+**Solution:**
+```bash
+# Check certificate status
+fly certs check your-domain.com
+
+# Verify DNS records
+dig your-domain.com
+dig AAAA your-domain.com
+
+# Wait for DNS propagation (up to 48 hours)
+```
+
+## Redis Issues
+
+### Issue: "Redis connection refused"
+
+**Symptoms:**
+```
+redis.exceptions.ConnectionError: Connection refused
+```
+
+**Solution:**
+```bash
+# Start Redis
+brew services start redis
+
+# Test connection
+redis-cli ping
+# Should return: PONG
+
+# Check Redis is listening
+lsof -i :6379
+```
+
+### Issue: Redis authentication failed
+
+**Symptoms:**
+```
+redis.exceptions.AuthenticationError
+```
+
+**Solution:**
+```bash
+# Update REDIS_URL with password
+export REDIS_URL="redis://:password@localhost:6379"
+
+# Or configure Redis without auth (local dev only)
+# In redis.conf:
+# requirepass ""
+```
+
+### Issue: Rate limiting not working
+
+**Symptoms:**
+- No 429 errors even with many requests
+- Rate limits ignored
+
+**Diagnosis:**
+```bash
+# Check Redis is connected
+curl http://localhost:8000/health | jq '.services.redis'
+
+# Check Redis keys
+redis-cli keys "fastapi-limiter:*"
+```
+
+**Solution:**
+```bash
+# Ensure Redis is running
+brew services list | grep redis
+
+# Restart application
+docker restart expo-smooth-mcp
+
+# Clear rate limit cache
+redis-cli FLUSHDB
+```
+
+## Getting More Help
+
+### Enable Debug Logging
+
+```bash
+# Set environment variable
+export LOG_LEVEL=DEBUG
+
+# Restart server
+python main.py
+```
+
+### Collect Diagnostic Information
+
+```bash
+# System info
+python --version
+docker --version
+docker-compose --version
+
+# Container info
+docker ps
+docker logs expo-smooth-mcp
+
+# Network info
+netstat -an | grep 8000
+lsof -i :8000
+
+# Redis info
+redis-cli INFO
+
+# Save to file
+python main.py > debug.log 2>&1
+```
+
+### Report Issues
+
+Include:
+1. Error message (full traceback)
+2. Steps to reproduce
+3. Environment (OS, Python version, Docker version)
+4. Logs (server, Docker, Redis)
+5. Configuration files (redact secrets)
+
+Submit to: https://github.com/your-org/expo-smooth-mcp/issues
+```
+
+### 2. Add Debugging Tips (20 min)
+
+Create `docs/DEBUGGING.md`:
+
+```markdown
+# Debugging Guide
+
+## Enabling Debug Mode
+
+### Application Debug Logging
+
+```bash
+# Set log level
+export LOG_LEVEL=DEBUG
+
+# Or in .env file
+LOG_LEVEL=DEBUG
+
+# Restart server
+python main.py
+```
+
+### Docker Debug Logging
+
+```bash
+# View live logs
+docker logs -f expo-smooth-mcp
+
+# Show last 100 lines
+docker logs --tail=100 expo-smooth-mcp
+
+# With timestamps
+docker logs -t expo-smooth-mcp
+```
+
+### Fly.io Debug Logging
+
+```bash
+# Tail logs
+fly logs
+
+# Filter by instance
+fly logs --instance <instance-id>
+
+# Show last hour
+fly logs --since 1h
+```
+
+## Using Debugger
+
+### VS Code Debugger
+
+Create `.vscode/launch.json`:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: FastAPI",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "main:app",
+        "--reload"
+      ],
+      "jinja": true,
+      "justMyCode": false
+    }
+  ]
+}
+```
+
+### PyCharm Debugger
+
+1. Run → Edit Configurations
+2. Add → Python
+3. Script path: `main.py`
+4. Add breakpoints in code
+5. Debug
+
+### PDB (Python Debugger)
+
+```python
+# Add to code
+import pdb; pdb.set_trace()
+
+# Or use breakpoint() (Python 3.7+)
+breakpoint()
+```
+
+## Common Debug Scenarios
+
+### Debug Authentication Flow
+
+```python
+# In security.py
+import logging
+logger = logging.getLogger(__name__)
+
+def authenticate_user(username, password):
+    logger.debug(f"Authenticating user: {username}")
+    user = get_user(username)
+    logger.debug(f"User found: {user is not None}")
+    # ... rest of code
+```
+
+### Debug MCP Tool Calls
+
+```python
+# In MCP tool handler
+@mcp.tool()
+def generate_forecast(sku: str, forecast_horizon: int = 90):
+    logger.debug(f"Tool called: generate_forecast({sku}, {forecast_horizon})")
+    try:
+        result = generate_forecast_for_sku(sku, forecast_horizon)
+        logger.debug(f"Forecast generated: {len(result['forecast'])} points")
+        return result
+    except Exception as e:
+        logger.error(f"Forecast failed: {e}", exc_info=True)
+        raise
+```
+
+### Debug Redis Connection
+
+```python
+# Test Redis
+from expo_smooth_mcp.redis_config import get_redis_client
+
+r = get_redis_client()
+if r:
+    print("✓ Redis connected")
+    print(f"  Ping: {r.ping()}")
+    print(f"  Info: {r.info('server')}")
+else:
+    print("✗ Redis not available")
+```
+
+## Performance Profiling
+
+### Using cProfile
+
+```bash
+python -m cProfile -o profile.stats main.py
+
+# Analyze results
+python -m pstats profile.stats
+stats> sort cumulative
+stats> stats 20
+```
+
+### Using line_profiler
+
+```bash
+pip install line-profiler
+
+# Add @profile decorator to functions
+@profile
+def generate_forecast_for_sku(sku, horizon):
+    # ... code
+
+# Run
+kernprof -l -v main.py
+```
+
+### Memory Profiling
+
+```bash
+pip install memory-profiler
+
+# Add @profile decorator
+from memory_profiler import profile
+
+@profile
+def expensive_function():
+    # ... code
+
+# Run
+python -m memory_profiler main.py
+```
+```
+
+### 3. Create FAQ Document (20 min)
+
+Create `docs/FAQ.md`:
+
+```markdown
+# Frequently Asked Questions
+
+## General
+
+### What is Expo Smooth MCP Server?
+A demand forecasting service using exponential smoothing (Holt-Winters) with Model Context Protocol (MCP) integration.
+
+### What does MCP stand for?
+Model Context Protocol - a standard for AI assistants to interact with external services.
+
+### Which AI assistants support MCP?
+- Claude Desktop
+- Cursor IDE
+- VS Code (with MCP extension)
+- Custom clients using MCP SDK
+
+## Deployment
+
+### Should I use Docker or Fly.io?
+- **Docker (local)**: Best for Claude Desktop integration, local development
+- **Fly.io (cloud)**: Best for production, public API access, team usage
+
+### Can I use both Docker and Fly.io?
+Yes! Many users run Docker locally for development and Fly.io for production.
+
+### How much does Fly.io cost?
+Approximately $4-5/month with the free Redis tier.
+
+### Can I deploy to other platforms?
+Yes! The application can run on:
+- AWS (ECS, Lambda)
+- Google Cloud Run
+- Azure Container Instances
+- Heroku
+- Any platform supporting Docker
+
+## Authentication
+
+### Do I need authentication for local use?
+No, but it's recommended to enable for security.
+
+### How long do tokens last?
+30 minutes by default. Use `/token/refresh` to get new token.
+
+### Can I disable authentication?
+For local development only. Not recommended for production.
+
+### How do I create new users?
+```bash
+python scripts/create_user.py username password
+```
+
+## MCP Integration
+
+### Why doesn't Claude Desktop show my tools?
+Common causes:
+1. Config file syntax error
+2. Claude Desktop not fully restarted
+3. Container not running
+4. Wrong config file location
+
+### What's the difference between stdio and HTTP/SSE?
+- **stdio**: Local communication, faster, for local servers
+- **HTTP/SSE**: Network communication, for remote servers
+
+### Can I use MCP tools from code?
+Yes! See [Client Integration Guide](CLIENT_INTEGRATION_GUIDE.md)
+
+## Forecasting
+
+### Which forecasting method is used?
+Holt-Winters seasonal exponential smoothing (triple exponential smoothing).
+
+### Can I add more products?
+Yes, add data to CSV and update preprocessing logic.
+
+### What are alpha, beta, gamma parameters?
+- alpha: Level smoothing (0-1)
+- beta: Trend smoothing (0-1)
+- gamma: Seasonal smoothing (0-1)
+
+### How accurate are the forecasts?
+Depends on data quality and parameters. Check `performance_metrics` in response.
+
+## Technical
+
+### What's the minimum Python version?
+Python 3.10+
+
+### Can I use SQLite/PostgreSQL instead of CSV?
+Yes! Modify preprocessing.py to use database.
+
+### How do I scale for more traffic?
+- Fly.io: `fly scale count 2`
+- Docker: Use Docker Swarm or Kubernetes
+- Add Redis caching
+
+### Is there a rate limit?
+Yes:
+- /token: 5/min
+- /api/forecast: 30/min (authenticated)
+- Global: 100/min (anonymous), 500/min (authenticated)
+
+## Troubleshooting
+
+### Server starts but I can't connect
+Check:
+1. Port 8000 not blocked by firewall
+2. Docker port mapping correct
+3. Server actually listening: `curl localhost:8000/health`
+
+### "Module not found" errors
+```bash
+# Reinstall dependencies
+pip install -r requirements.txt
+
+# Or rebuild Docker image
+docker-mcp-toolkit start expo-smooth-mcp --rebuild
+```
+
+### Redis connection fails
+```bash
+# Start Redis
+brew services start redis  # macOS
+sudo systemctl start redis # Linux
+
+# Test
+redis-cli ping
+```
+
+## Contributing
+
+### How can I contribute?
+See [CONTRIBUTING.md](CONTRIBUTING.md)
+
+### Where do I report bugs?
+GitHub Issues: https://github.com/your-org/expo-smooth-mcp/issues
+
+### Can I add new forecasting models?
+Yes! PRs welcome. See [Development Guide](DEVELOPMENT_GUIDE.md)
+```
+
+### 4. Test All Troubleshooting Solutions (20 min)
+
+Verify each solution works:
+
+```bash
+# Test common issues
+python scripts/test_troubleshooting.py
+```
+
+**Testing Checklist:**
+- [ ] TROUBLESHOOTING.md created
+- [ ] Installation issues documented
+- [ ] Docker issues covered
+- [ ] Authentication issues explained
+- [ ] MCP integration problems addressed
+- [ ] Runtime errors documented
+- [ ] Performance issues covered
+- [ ] Deployment issues included
+- [ ] Redis issues documented
+- [ ] DEBUGGING.md guide created
+- [ ] FAQ.md created
+- [ ] All solutions tested
+
+**Acceptance Criteria:**
+- [ ] Comprehensive troubleshooting guide created
+- [ ] Common issues categorized clearly
+- [ ] Step-by-step solutions provided
+- [ ] Diagnostic commands included
+- [ ] Debugging guide with tools and techniques
+- [ ] FAQ answers common questions
+- [ ] All solutions verified to work
+- [ ] Debug logging instructions clear
+- [ ] Performance profiling documented
+- [ ] Ready for performance benchmarking (TASK-606)
 
 #### TASK-606: Create benchmark script
 **Estimated Time:** 2 hours | **Complexity:** High | **Dependencies:** TASK-413
-**Description:** Create `benchmark.py` to measure latency (p50, p95, p99) for both Gradio and FastMCP implementations.
 
-#### TASK-607: Run performance benchmarks
+**Description:**
+Create comprehensive benchmarking script to measure API latency (p50, p95, p99), throughput, and compare local vs production performance.
+
+**Implementation Steps:**
+
+### 1. Create Benchmark Script (60 min)
+
+Create `scripts/benchmark.py`:
+
+```python
+#!/usr/bin/env python3
+"""
+Performance benchmarking for Expo Smooth MCP Server.
+
+Measures:
+- Request latency (p50, p95, p99, p100)
+- Throughput (requests/second)
+- Error rate
+- Memory usage
+
+Compares:
+- REST API vs MCP tools
+- Local vs production
+- Authenticated vs unauthenticated
+"""
+
+import time
+import asyncio
+import statistics
+import requests
+from typing import List, Dict, Tuple
+from datetime import datetime
+import json
+
+# Configuration
+BASE_URL = "http://localhost:8000"
+TOKEN = None
+NUM_REQUESTS = 100
+CONCURRENT_REQUESTS = 10
+
+
+class BenchmarkResults:
+    """Store and analyze benchmark results."""
+    
+    def __init__(self, name: str):
+        self.name = name
+        self.latencies: List[float] = []
+        self.errors: List[str] = []
+        self.start_time: float = 0
+        self.end_time: float = 0
+    
+    def add_latency(self, latency: float):
+        """Add a latency measurement in milliseconds."""
+        self.latencies.append(latency)
+    
+    def add_error(self, error: str):
+        """Add an error."""
+        self.errors.append(error)
+    
+    def get_percentile(self, p: float) -> float:
+        """Get percentile latency."""
+        if not self.latencies:
+            return 0.0
+        sorted_latencies = sorted(self.latencies)
+        index = int(len(sorted_latencies) * p / 100)
+        return sorted_latencies[min(index, len(sorted_latencies) - 1)]
+    
+    def get_stats(self) -> Dict:
+        """Get summary statistics."""
+        if not self.latencies:
+            return {
+                "name": self.name,
+                "total_requests": 0,
+                "errors": len(self.errors),
+                "error_rate": 0.0,
+            }
+        
+        duration = self.end_time - self.start_time
+        total_requests = len(self.latencies) + len(self.errors)
+        
+        return {
+            "name": self.name,
+            "total_requests": total_requests,
+            "successful_requests": len(self.latencies),
+            "errors": len(self.errors),
+            "error_rate": len(self.errors) / total_requests * 100,
+            "duration_seconds": round(duration, 2),
+            "throughput_rps": round(total_requests / duration, 2) if duration > 0 else 0,
+            "latency_stats": {
+                "min_ms": round(min(self.latencies), 2),
+                "max_ms": round(max(self.latencies), 2),
+                "mean_ms": round(statistics.mean(self.latencies), 2),
+                "median_ms": round(statistics.median(self.latencies), 2),
+                "p50_ms": round(self.get_percentile(50), 2),
+                "p95_ms": round(self.get_percentile(95), 2),
+                "p99_ms": round(self.get_percentile(99), 2),
+                "p100_ms": round(max(self.latencies), 2),
+            }
+        }
+    
+    def print_report(self):
+        """Print formatted report."""
+        stats = self.get_stats()
+        
+        print(f"\n{'='*60}")
+        print(f"Benchmark: {stats['name']}")
+        print(f"{'='*60}")
+        print(f"Total Requests:     {stats['total_requests']}")
+        print(f"Successful:         {stats['successful_requests']}")
+        print(f"Errors:             {stats['errors']} ({stats['error_rate']:.1f}%)")
+        print(f"Duration:           {stats['duration_seconds']}s")
+        print(f"Throughput:         {stats['throughput_rps']} req/s")
+        
+        if 'latency_stats' in stats:
+            print(f"\nLatency (ms):")
+            lat = stats['latency_stats']
+            print(f"  Min:    {lat['min_ms']}")
+            print(f"  Mean:   {lat['mean_ms']}")
+            print(f"  Median: {lat['median_ms']}")
+            print(f"  P50:    {lat['p50_ms']}")
+            print(f"  P95:    {lat['p95_ms']}")
+            print(f"  P99:    {lat['p99_ms']}")
+            print(f"  Max:    {lat['max_ms']}")
+        
+        if self.errors:
+            print(f"\nSample Errors (first 3):")
+            for error in self.errors[:3]:
+                print(f"  - {error}")
+
+
+def get_auth_token() -> str:
+    """Get authentication token."""
+    global TOKEN
+    if TOKEN:
+        return TOKEN
+    
+    response = requests.post(
+        f"{BASE_URL}/token",
+        data={"username": "testuser", "password": "testpass123"}
+    )
+    if response.status_code == 200:
+        TOKEN = response.json()["access_token"]
+        return TOKEN
+    else:
+        raise Exception(f"Failed to get token: {response.text}")
+
+
+def benchmark_endpoint(
+    url: str,
+    method: str = "GET",
+    headers: Dict = None,
+    json_data: Dict = None,
+    num_requests: int = NUM_REQUESTS,
+    name: str = None
+) -> BenchmarkResults:
+    """Benchmark a single endpoint."""
+    results = BenchmarkResults(name or url)
+    results.start_time = time.time()
+    
+    for i in range(num_requests):
+        try:
+            start = time.time()
+            
+            if method == "GET":
+                response = requests.get(url, headers=headers)
+            else:
+                response = requests.post(url, headers=headers, json=json_data)
+            
+            end = time.time()
+            latency_ms = (end - start) * 1000
+            
+            if response.status_code < 400:
+                results.add_latency(latency_ms)
+            else:
+                results.add_error(f"HTTP {response.status_code}: {response.text[:100]}")
+        
+        except Exception as e:
+            results.add_error(f"Exception: {str(e)}")
+    
+    results.end_time = time.time()
+    return results
+
+
+def benchmark_health_check():
+    """Benchmark health check endpoint."""
+    print("\n[1/7] Benchmarking health check endpoint...")
+    return benchmark_endpoint(
+        f"{BASE_URL}/health",
+        name="Health Check"
+    )
+
+
+def benchmark_root():
+    """Benchmark root endpoint."""
+    print("\n[2/7] Benchmarking root endpoint...")
+    return benchmark_endpoint(
+        f"{BASE_URL}/",
+        name="Root Endpoint"
+    )
+
+
+def benchmark_auth():
+    """Benchmark authentication."""
+    print("\n[3/7] Benchmarking authentication...")
+    results = BenchmarkResults("Authentication")
+    results.start_time = time.time()
+    
+    for i in range(NUM_REQUESTS):
+        try:
+            start = time.time()
+            response = requests.post(
+                f"{BASE_URL}/token",
+                data={"username": "testuser", "password": "testpass123"}
+            )
+            end = time.time()
+            latency_ms = (end - start) * 1000
+            
+            if response.status_code == 200:
+                results.add_latency(latency_ms)
+            else:
+                results.add_error(f"HTTP {response.status_code}")
+        
+        except Exception as e:
+            results.add_error(str(e))
+        
+        # Avoid rate limiting
+        if i % 4 == 0:
+            time.sleep(15)
+    
+    results.end_time = time.time()
+    return results
+
+
+def benchmark_forecast_api():
+    """Benchmark forecast API endpoint."""
+    print("\n[4/7] Benchmarking forecast API (authenticated)...")
+    token = get_auth_token()
+    
+    return benchmark_endpoint(
+        f"{BASE_URL}/api/forecast",
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        },
+        json_data={
+            "sku": "PRODUCT_001",
+            "forecast_horizon": 90
+        },
+        name="Forecast API (authenticated)"
+    )
+
+
+def benchmark_different_skus():
+    """Benchmark forecasts for different SKUs."""
+    print("\n[5/7] Benchmarking different SKUs...")
+    token = get_auth_token()
+    
+    skus = ["PRODUCT_001", "PRODUCT_002", "PRODUCT_003", "PRODUCT_004", "PRODUCT_005"]
+    results = BenchmarkResults("Different SKUs")
+    results.start_time = time.time()
+    
+    for i in range(NUM_REQUESTS):
+        sku = skus[i % len(skus)]
+        
+        try:
+            start = time.time()
+            response = requests.post(
+                f"{BASE_URL}/api/forecast",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                },
+                json={"sku": sku, "forecast_horizon": 90}
+            )
+            end = time.time()
+            latency_ms = (end - start) * 1000
+            
+            if response.status_code < 400:
+                results.add_latency(latency_ms)
+            else:
+                results.add_error(f"HTTP {response.status_code} for {sku}")
+        
+        except Exception as e:
+            results.add_error(f"{sku}: {str(e)}")
+        
+        # Avoid rate limiting
+        if i % 25 == 0 and i > 0:
+            time.sleep(2)
+    
+    results.end_time = time.time()
+    return results
+
+
+def benchmark_forecast_horizons():
+    """Benchmark different forecast horizons."""
+    print("\n[6/7] Benchmarking different forecast horizons...")
+    token = get_auth_token()
+    
+    horizons = [30, 60, 90, 180, 365]
+    results = BenchmarkResults("Different Horizons")
+    results.start_time = time.time()
+    
+    for i in range(NUM_REQUESTS):
+        horizon = horizons[i % len(horizons)]
+        
+        try:
+            start = time.time()
+            response = requests.post(
+                f"{BASE_URL}/api/forecast",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                },
+                json={"sku": "PRODUCT_001", "forecast_horizon": horizon}
+            )
+            end = time.time()
+            latency_ms = (end - start) * 1000
+            
+            if response.status_code < 400:
+                results.add_latency(latency_ms)
+            else:
+                results.add_error(f"HTTP {response.status_code} for horizon {horizon}")
+        
+        except Exception as e:
+            results.add_error(f"Horizon {horizon}: {str(e)}")
+        
+        # Avoid rate limiting
+        if i % 25 == 0 and i > 0:
+            time.sleep(2)
+    
+    results.end_time = time.time()
+    return results
+
+
+def benchmark_concurrent_requests():
+    """Benchmark concurrent requests."""
+    print(f"\n[7/7] Benchmarking {CONCURRENT_REQUESTS} concurrent requests...")
+    token = get_auth_token()
+    
+    results = BenchmarkResults(f"{CONCURRENT_REQUESTS} Concurrent Requests")
+    results.start_time = time.time()
+    
+    import concurrent.futures
+    
+    def make_request():
+        try:
+            start = time.time()
+            response = requests.post(
+                f"{BASE_URL}/api/forecast",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                },
+                json={"sku": "PRODUCT_001", "forecast_horizon": 90}
+            )
+            end = time.time()
+            latency_ms = (end - start) * 1000
+            
+            return (latency_ms, response.status_code)
+        except Exception as e:
+            return (None, str(e))
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=CONCURRENT_REQUESTS) as executor:
+        futures = [executor.submit(make_request) for _ in range(NUM_REQUESTS)]
+        
+        for future in concurrent.futures.as_completed(futures):
+            latency, status = future.result()
+            if latency is not None and isinstance(status, int) and status < 400:
+                results.add_latency(latency)
+            else:
+                results.add_error(f"Error: {status}")
+    
+    results.end_time = time.time()
+    return results
+
+
+def save_results(all_results: List[BenchmarkResults], filename: str = None):
+    """Save results to JSON file."""
+    if filename is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"benchmark_results_{timestamp}.json"
+    
+    data = {
+        "timestamp": datetime.now().isoformat(),
+        "base_url": BASE_URL,
+        "num_requests": NUM_REQUESTS,
+        "concurrent_requests": CONCURRENT_REQUESTS,
+        "results": [r.get_stats() for r in all_results]
+    }
+    
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=2)
+    
+    print(f"\n✓ Results saved to: {filename}")
+
+
+def main():
+    """Run all benchmarks."""
+    print("="*60)
+    print("Expo Smooth MCP Server - Performance Benchmark")
+    print("="*60)
+    print(f"Target: {BASE_URL}")
+    print(f"Requests per benchmark: {NUM_REQUESTS}")
+    print(f"Concurrent requests: {CONCURRENT_REQUESTS}")
+    
+    # Run benchmarks
+    all_results = []
+    
+    try:
+        all_results.append(benchmark_health_check())
+        all_results.append(benchmark_root())
+        all_results.append(benchmark_auth())
+        all_results.append(benchmark_forecast_api())
+        all_results.append(benchmark_different_skus())
+        all_results.append(benchmark_forecast_horizons())
+        all_results.append(benchmark_concurrent_requests())
+    
+    except KeyboardInterrupt:
+        print("\n\nBenchmark interrupted by user.")
+    
+    except Exception as e:
+        print(f"\n\nBenchmark failed: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Print all results
+    print("\n" + "="*60)
+    print("BENCHMARK RESULTS")
+    print("="*60)
+    
+    for result in all_results:
+        result.print_report()
+    
+    # Summary comparison
+    print(f"\n{'='*60}")
+    print("SUMMARY COMPARISON")
+    print(f"{'='*60}")
+    print(f"{'Benchmark':<35} {'P50 (ms)':<12} {'P95 (ms)':<12} {'P99 (ms)':<12}")
+    print("-"*60)
+    
+    for result in all_results:
+        stats = result.get_stats()
+        if 'latency_stats' in stats:
+            lat = stats['latency_stats']
+            print(f"{stats['name']:<35} {lat['p50_ms']:<12} {lat['p95_ms']:<12} {lat['p99_ms']:<12}")
+    
+    # Save results
+    save_results(all_results)
+
+
+if __name__ == "__main__":
+    import sys
+    
+    # Parse command line arguments
+    if len(sys.argv) > 1:
+        BASE_URL = sys.argv[1]
+    if len(sys.argv) > 2:
+        NUM_REQUESTS = int(sys.argv[2])
+    if len(sys.argv) > 3:
+        CONCURRENT_REQUESTS = int(sys.argv[3])
+    
+    main()
+```
+
+Make executable:
+```bash
+chmod +x scripts/benchmark.py
+```
+
+### 2. Create Benchmark Configuration (15 min)
+
+Create `scripts/benchmark_config.yaml`:
+
+```yaml
+# Benchmark configuration
+
+environments:
+  local:
+    base_url: "http://localhost:8000"
+    description: "Local Docker deployment"
+  
+  production:
+    base_url: "https://your-app.fly.dev"
+    description: "Fly.io production deployment"
+
+test_scenarios:
+  quick:
+    num_requests: 50
+    concurrent_requests: 5
+    description: "Quick smoke test"
+  
+  standard:
+    num_requests: 100
+    concurrent_requests: 10
+    description: "Standard benchmark"
+  
+  stress:
+    num_requests: 500
+    concurrent_requests: 50
+    description: "Stress test"
+
+thresholds:
+  # Acceptable latency thresholds (ms)
+  health_check:
+    p50: 50
+    p95: 100
+    p99: 200
+  
+  forecast_api:
+    p50: 500
+    p95: 1000
+    p99: 2000
+  
+  authentication:
+    p50: 100
+    p95: 200
+    p99: 300
+
+# Acceptable error rate
+max_error_rate: 1.0  # 1%
+
+# Minimum throughput (requests/second)
+min_throughput:
+  health_check: 100
+  forecast_api: 10
+```
+
+### 3. Create Comparison Script (30 min)
+
+Create `scripts/compare_benchmarks.py`:
+
+```python
+#!/usr/bin/env python3
+"""Compare benchmark results between local and production."""
+
+import json
+import sys
+from typing import Dict, List
+
+
+def load_results(filename: str) -> Dict:
+    """Load benchmark results from JSON file."""
+    with open(filename, 'r') as f:
+        return json.load(f)
+
+
+def compare_results(local_file: str, prod_file: str):
+    """Compare local and production benchmark results."""
+    local = load_results(local_file)
+    prod = load_results(prod_file)
+    
+    print("="*80)
+    print("BENCHMARK COMPARISON: Local vs Production")
+    print("="*80)
+    print(f"Local:      {local['base_url']} ({local['timestamp']})")
+    print(f"Production: {prod['base_url']} ({prod['timestamp']})")
+    print()
+    
+    # Compare each benchmark
+    print(f"{'Benchmark':<30} {'Metric':<15} {'Local':<15} {'Production':<15} {'Diff':<10}")
+    print("-"*80)
+    
+    for local_result in local['results']:
+        name = local_result['name']
+        prod_result = next((r for r in prod['results'] if r['name'] == name), None)
+        
+        if not prod_result:
+            continue
+        
+        if 'latency_stats' in local_result:
+            for metric in ['p50_ms', 'p95_ms', 'p99_ms']:
+                local_val = local_result['latency_stats'][metric]
+                prod_val = prod_result['latency_stats'][metric]
+                diff = ((prod_val - local_val) / local_val * 100) if local_val > 0 else 0
+                diff_str = f"+{diff:.1f}%" if diff > 0 else f"{diff:.1f}%"
+                
+                print(f"{name:<30} {metric:<15} {local_val:<15.2f} {prod_val:<15.2f} {diff_str:<10}")
+        
+        # Throughput comparison
+        local_tput = local_result['throughput_rps']
+        prod_tput = prod_result['throughput_rps']
+        tput_diff = ((prod_tput - local_tput) / local_tput * 100) if local_tput > 0 else 0
+        tput_diff_str = f"+{tput_diff:.1f}%" if tput_diff > 0 else f"{tput_diff:.1f}%"
+        
+        print(f"{name:<30} {'throughput':<15} {local_tput:<15.2f} {prod_tput:<15.2f} {tput_diff_str:<10}")
+        print()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python compare_benchmarks.py <local_results.json> <prod_results.json>")
+        sys.exit(1)
+    
+    compare_results(sys.argv[1], sys.argv[2])
+```
+
+### 4. Create Benchmark Documentation (15 min)
+
+Create `docs/BENCHMARKING.md`:
+
+```markdown
+# Benchmarking Guide
+
+## Running Benchmarks
+
+### Quick Start
+
+```bash
+# Local deployment
+python scripts/benchmark.py
+
+# Production deployment
+python scripts/benchmark.py https://your-app.fly.dev
+
+# Custom parameters
+python scripts/benchmark.py http://localhost:8000 200 20
+#                           ^URL                  ^requests ^concurrent
+```
+
+### Benchmark Scenarios
+
+**Quick (50 requests, 5 concurrent):**
+```bash
+python scripts/benchmark.py http://localhost:8000 50 5
+```
+
+**Standard (100 requests, 10 concurrent):**
+```bash
+python scripts/benchmark.py http://localhost:8000 100 10
+```
+
+**Stress (500 requests, 50 concurrent):**
+```bash
+python scripts/benchmark.py http://localhost:8000 500 50
+```
+
+## What Gets Benchmarked
+
+1. **Health Check** - GET /health
+2. **Root Endpoint** - GET /
+3. **Authentication** - POST /token
+4. **Forecast API** - POST /api/forecast
+5. **Different SKUs** - All 5 products
+6. **Different Horizons** - 30, 60, 90, 180, 365 days
+7. **Concurrent Requests** - Parallel execution
+
+## Metrics Collected
+
+### Latency
+- **p50 (median)**: 50% of requests complete in this time
+- **p95**: 95% of requests complete in this time
+- **p99**: 99% of requests complete in this time
+- **min/max**: Fastest and slowest requests
+
+### Throughput
+- Requests per second (RPS)
+
+### Reliability
+- Success rate
+- Error rate
+- Error types
+
+## Expected Performance
+
+### Local Deployment (Docker)
+
+| Endpoint | P50 | P95 | P99 | Throughput |
+|----------|-----|-----|-----|------------|
+| Health Check | <20ms | <50ms | <100ms | >200 RPS |
+| Root | <30ms | <60ms | <120ms | >150 RPS |
+| Authentication | <50ms | <100ms | <200ms | >20 RPS |
+| Forecast API | <200ms | <500ms | <1000ms | >20 RPS |
+
+### Production Deployment (Fly.io)
+
+| Endpoint | P50 | P95 | P99 | Throughput |
+|----------|-----|-----|-----|------------|
+| Health Check | <50ms | <100ms | <200ms | >100 RPS |
+| Root | <60ms | <120ms | <250ms | >80 RPS |
+| Authentication | <100ms | <200ms | <400ms | >15 RPS |
+| Forecast API | <400ms | <1000ms | <2000ms | >10 RPS |
+
+*Note: Production latency includes network overhead*
+
+## Comparing Deployments
+
+```bash
+# Benchmark local
+python scripts/benchmark.py http://localhost:8000 > local_results.txt
+
+# Benchmark production
+python scripts/benchmark.py https://your-app.fly.dev > prod_results.txt
+
+# Compare (using JSON results)
+python scripts/compare_benchmarks.py \\
+  benchmark_results_local.json \\
+  benchmark_results_prod.json
+```
+
+## Continuous Benchmarking
+
+### Pre-deployment Check
+
+```bash
+# Before deploying
+python scripts/benchmark.py http://localhost:8000 100 10
+
+# Save baseline
+cp benchmark_results_*.json benchmarks/baseline.json
+
+# After changes
+python scripts/benchmark.py http://localhost:8000 100 10
+
+# Compare
+python scripts/compare_benchmarks.py \\
+  benchmarks/baseline.json \\
+  benchmark_results_*.json
+```
+
+### CI/CD Integration
+
+Add to GitHub Actions:
+
+```yaml
+- name: Run benchmarks
+  run: |
+    python scripts/benchmark.py http://localhost:8000 100 10
+    
+- name: Check thresholds
+  run: |
+    python scripts/check_thresholds.py benchmark_results_*.json
+```
+
+## Troubleshooting
+
+### High Latency
+
+**Check system resources:**
+```bash
+docker stats expo-smooth-mcp
+```
+
+**Profile code:**
+```bash
+python -m cProfile -o profile.stats main.py
+```
+
+### Low Throughput
+
+**Check concurrent connections:**
+```bash
+netstat -an | grep 8000 | grep ESTABLISHED | wc -l
+```
+
+**Increase workers:**
+```python
+# main.py
+uvicorn.run(app, workers=4)
+```
+
+### High Error Rate
+
+**Check logs:**
+```bash
+docker logs expo-smooth-mcp
+fly logs
+```
+
+**Check rate limits:**
+```bash
+redis-cli keys "fastapi-limiter:*"
+```
+```
+
+**Testing Checklist:**
+- [ ] benchmark.py script created
+- [ ] All 7 benchmark scenarios implemented
+- [ ] Latency percentiles calculated correctly
+- [ ] Throughput measured
+- [ ] Error tracking works
+- [ ] JSON results saved
+- [ ] Comparison script created
+- [ ] Configuration file created
+- [ ] Documentation complete
+- [ ] Script tested on local deployment
+- [ ] Script tested on production
+- [ ] Results validated
+
+**Acceptance Criteria:**
+- [ ] Comprehensive benchmark script created
+- [ ] Measures p50, p95, p99, p100 latency
+- [ ] Measures throughput (RPS)
+- [ ] Tests health, auth, forecast endpoints
+- [ ] Tests different SKUs and horizons
+- [ ] Tests concurrent requests
+- [ ] Saves results to JSON
+- [ ] Comparison script works
+- [ ] Documentation complete
+- [ ] Ready to run benchmarks (TASK-607)
+
+####TASK-607: Run performance benchmarks
 **Estimated Time:** 1 hour | **Complexity:** Medium | **Dependencies:** TASK-606
-**Description:** Execute benchmarks against local and production deployments, document results.
+
+**Description:**
+Execute comprehensive benchmarks against local and production deployments, analyze results, document findings, and verify performance meets requirements.
+
+**Implementation Steps:**
+
+### 1. Run Local Benchmarks (15 min)
+
+```bash
+# Start local server
+docker-mcp-toolkit start expo-smooth-mcp
+
+# Verify server is running
+curl http://localhost:8000/health
+
+# Run standard benchmark
+python scripts/benchmark.py http://localhost:8000 100 10
+
+# Save results
+cp benchmark_results_*.json benchmarks/local_$(date +%Y%m%d).json
+
+# Run extended benchmark for more data points
+python scripts/benchmark.py http://localhost:8000 200 20
+
+# Save extended results
+cp benchmark_results_*.json benchmarks/local_extended_$(date +%Y%m%d).json
+```
+
+### 2. Run Production Benchmarks (15 min)
+
+```bash
+# Deploy to production if not already
+fly deploy
+
+# Verify production is running
+curl https://your-app.fly.dev/health
+
+# Run standard benchmark
+python scripts/benchmark.py https://your-app.fly.dev 100 10
+
+# Save results
+cp benchmark_results_*.json benchmarks/production_$(date +%Y%m%d).json
+
+# Run extended benchmark
+python scripts/benchmark.py https://your-app.fly.dev 200 20
+
+# Save extended results
+cp benchmark_results_*.json benchmarks/production_extended_$(date +%Y%m%d).json
+```
+
+### 3. Compare Results (10 min)
+
+```bash
+# Compare local vs production
+python scripts/compare_benchmarks.py \\
+  benchmarks/local_$(date +%Y%m%d).json \\
+  benchmarks/production_$(date +%Y%m%d).json > benchmarks/comparison_$(date +%Y%m%d).txt
+
+# View comparison
+cat benchmarks/comparison_$(date +%Y%m%d).txt
+```
+
+### 4. Create Benchmark Report (20 min)
+
+Create `docs/BENCHMARK_REPORT.md` with actual results including:
+- Executive summary with key findings
+- Environment details
+- Detailed results for all 7 benchmarks
+- Latency percentiles (p50, p95, p99)
+- Throughput measurements
+- Threshold compliance verification
+- Local vs production comparison
+- Bottleneck identification
+- Optimization recommendations
+- Resource utilization analysis
+- Conclusions and next steps
+
+**Testing Checklist:**
+- [ ] Local benchmarks executed
+- [ ] Production benchmarks executed
+- [ ] Results compared
+- [ ] Benchmark report created
+- [ ] Results documented in JSON
+- [ ] Comparison analysis complete
+- [ ] Thresholds verified (health p95 <100ms, forecast p95 <1000ms)
+- [ ] Bottlenecks identified
+- [ ] Optimization recommendations provided
+- [ ] Raw data saved to benchmarks/
+
+**Acceptance Criteria:**
+- [ ] Local benchmarks completed successfully
+- [ ] Production benchmarks completed successfully
+- [ ] All endpoints meet performance thresholds (p95 latency)
+- [ ] Comprehensive BENCHMARK_REPORT.md created with actual data
+- [ ] Local vs production comparison documented
+- [ ] Bottlenecks identified and documented
+- [ ] Optimization recommendations provided
+- [ ] Raw benchmark data preserved in JSON format
+- [ ] Error rate below 1% for all benchmarks
+- [ ] Ready to update ADRs with results (TASK-609)
 
 #### TASK-608: Create load testing suite
 **Estimated Time:** 2 hours | **Complexity:** High | **Dependencies:** TASK-606
-**Description:** Create `locustfile.py` for load testing, define realistic user scenarios.
 
-#### TASK-609: Update all ADRs
-**Estimated Time:** 1 hour | **Complexity:** Low | **Dependencies:** TASK-607
-**Description:** Update ADR-004 status to "Accepted", add actual benchmark results, update revision history.
+**Description:**
+Create Locust-based load testing suite to simulate realistic user behavior, test system under sustained load, and identify breaking points.
+
+**Implementation Steps:**
+
+### 1. Install Locust (5 min)
+
+```bash
+pip install locust
+```
+
+Add to `requirements.txt`:
+```
+locust==2.15.1
+```
+
+### 2. Create Locustfile (60 min)
+
+Create `tests/locustfile.py`:
+
+```python
+"""
+Load testing for Expo Smooth MCP Server using Locust.
+
+Simulates realistic user behavior:
+- Authentication
+- Multiple forecast requests
+- Different SKUs and parameters
+"""
+
+from locust import HttpUser, task, between
+import random
+
+
+class ForecastUser(HttpUser):
+    """Simulates a user generating forecasts."""
+    
+    wait_time = between(1, 5)  # Wait 1-5 seconds between tasks
+    token = None
+    
+    def on_start(self):
+        """Get authentication token when user starts."""
+        response = self.client.post("/token", data={
+            "username": "testuser",
+            "password": "testpass123"
+        })
+        if response.status_code == 200:
+            self.token = response.json()["access_token"]
+    
+    @task(5)
+    def generate_forecast(self):
+        """Generate forecast (most common task)."""
+        if not self.token:
+            self.on_start()
+        
+        skus = ["PRODUCT_001", "PRODUCT_002", "PRODUCT_003", "PRODUCT_004", "PRODUCT_005"]
+        sku = random.choice(skus)
+        
+        self.client.post("/api/forecast", 
+            headers={"Authorization": f"Bearer {self.token}"},
+            json={
+                "sku": sku,
+                "forecast_horizon": random.choice([30, 60, 90])
+            },
+            name="/api/forecast (authenticated)"
+        )
+    
+    @task(2)
+    def check_health(self):
+        """Check health endpoint."""
+        self.client.get("/health")
+    
+    @task(1)
+    def view_docs(self):
+        """View API docs."""
+        self.client.get("/docs")
+    
+    @task(1)
+    def generate_long_forecast(self):
+        """Generate long-term forecast (less common)."""
+        if not self.token:
+            self.on_start()
+        
+        self.client.post("/api/forecast", 
+            headers={"Authorization": f"Bearer {self.token}"},
+            json={
+                "sku": "PRODUCT_001",
+                "forecast_horizon": random.choice([180, 365])
+            },
+            name="/api/forecast (long-term)"
+        )
+
+
+class AnonymousUser(HttpUser):
+    """Simulates anonymous users browsing public endpoints."""
+    
+    wait_time = between(2, 10)
+    
+    @task(3)
+    def check_health(self):
+        """Check health endpoint."""
+        self.client.get("/health")
+    
+    @task(2)
+    def view_root(self):
+        """View root endpoint."""
+        self.client.get("/")
+    
+    @task(1)
+    def view_docs(self):
+        """View API documentation."""
+        self.client.get("/docs")
+```
+
+### 3. Create Load Test Configuration (15 min)
+
+Create `tests/locust.conf`:
+
+```ini
+# Locust configuration file
+
+# Web UI settings
+web-host = 0.0.0.0
+web-port = 8089
+
+# Test settings
+users = 50
+spawn-rate = 5
+run-time = 5m
+
+# Reporting
+html = load_test_report.html
+csv = load_test_results
+```
+
+### 4. Create Load Test Runner Script (20 min)
+
+Create `scripts/run_load_test.sh`:
+
+```bash
+#!/bin/bash
+# Run load testing with different scenarios
+
+set -e
+
+BASE_URL="${1:-http://localhost:8000}"
+SCENARIO="${2:-standard}"
+
+echo "="
+echo "Load Testing Expo Smooth MCP Server"
+echo "="
+echo "Target: $BASE_URL"
+echo "Scenario: $SCENARIO"
+echo ""
+
+case $SCENARIO in
+  "smoke")
+    echo "Smoke test: 5 users, 1/sec spawn, 1 min"
+    locust -f tests/locustfile.py \\
+      --host=$BASE_URL \\
+      --users=5 \\
+      --spawn-rate=1 \\
+      --run-time=1m \\
+      --headless \\
+      --html=reports/load_test_smoke.html \\
+      --csv=reports/load_test_smoke
+    ;;
+  
+  "standard")
+    echo "Standard test: 50 users, 5/sec spawn, 5 min"
+    locust -f tests/locustfile.py \\
+      --host=$BASE_URL \\
+      --users=50 \\
+      --spawn-rate=5 \\
+      --run-time=5m \\
+      --headless \\
+      --html=reports/load_test_standard.html \\
+      --csv=reports/load_test_standard
+    ;;
+  
+  "stress")
+    echo "Stress test: 200 users, 10/sec spawn, 10 min"
+    locust -f tests/locustfile.py \\
+      --host=$BASE_URL \\
+      --users=200 \\
+      --spawn-rate=10 \\
+      --run-time=10m \\
+      --headless \\
+      --html=reports/load_test_stress.html \\
+      --csv=reports/load_test_stress
+    ;;
+  
+  "spike")
+    echo "Spike test: 100 users, 50/sec spawn, 3 min"
+    locust -f tests/locustfile.py \\
+      --host=$BASE_URL \\
+      --users=100 \\
+      --spawn-rate=50 \\
+      --run-time=3m \\
+      --headless \\
+      --html=reports/load_test_spike.html \\
+      --csv=reports/load_test_spike
+    ;;
+  
+  "interactive")
+    echo "Interactive mode - open browser to http://localhost:8089"
+    locust -f tests/locustfile.py \\
+      --host=$BASE_URL
+    ;;
+  
+  *)
+    echo "Unknown scenario: $SCENARIO"
+    echo "Available: smoke, standard, stress, spike, interactive"
+    exit 1
+    ;;
+esac
+
+echo ""
+echo "Load test complete!"
+echo "Report: reports/load_test_${SCENARIO}.html"
+```
+
+Make executable:
+```bash
+chmod +x scripts/run_load_test.sh
+```
+
+### 5. Create Load Testing Documentation (20 min)
+
+Create `docs/LOAD_TESTING.md`:
+
+```markdown
+# Load Testing Guide
+
+## Running Load Tests
+
+### Quick Start
+
+```bash
+# Standard test (50 users, 5 min)
+./scripts/run_load_test.sh http://localhost:8000 standard
+
+# Stress test (200 users, 10 min)
+./scripts/run_load_test.sh http://localhost:8000 stress
+
+# Interactive mode (web UI)
+./scripts/run_load_test.sh http://localhost:8000 interactive
+```
+
+## Test Scenarios
+
+### Smoke Test
+- **Users:** 5
+- **Spawn Rate:** 1/sec
+- **Duration:** 1 min
+- **Purpose:** Quick sanity check
+
+### Standard Test
+- **Users:** 50
+- **Spawn Rate:** 5/sec
+- **Duration:** 5 min
+- **Purpose:** Normal load testing
+
+### Stress Test
+- **Users:** 200
+- **Spawn Rate:** 10/sec
+- **Duration:** 10 min
+- **Purpose:** Find breaking point
+
+### Spike Test
+- **Users:** 100
+- **Spawn Rate:** 50/sec
+- **Duration:** 3 min
+- **Purpose:** Test sudden traffic spikes
+
+## User Behavior
+
+### Forecast User (70% of users)
+- Generate forecasts (weight: 5)
+- Check health (weight: 2)
+- View docs (weight: 1)
+- Long-term forecasts (weight: 1)
+- Wait: 1-5 seconds between tasks
+
+### Anonymous User (30% of users)
+- Check health (weight: 3)
+- View root (weight: 2)
+- View docs (weight: 1)
+- Wait: 2-10 seconds between tasks
+
+## Analyzing Results
+
+### Web Report
+Open `reports/load_test_standard.html` in browser.
+
+### CSV Results
+```bash
+# Request stats
+cat reports/load_test_standard_stats.csv
+
+# Response times
+cat reports/load_test_standard_stats_history.csv
+
+# Failures
+cat reports/load_test_standard_failures.csv
+```
+
+### Key Metrics
+- **RPS:** Requests per second
+- **Response Time:** P50, P95, P99
+- **Failure Rate:** Should be <1%
+- **Users:** Concurrent users
+
+## Expected Performance
+
+### Local (Docker)
+- 50 users: 20-30 RPS, p95 <1s
+- 100 users: 30-40 RPS, p95 <2s
+- Breaking point: ~200 users
+
+### Production (Fly.io - 256MB)
+- 50 users: 15-20 RPS, p95 <1.5s
+- 100 users: 20-25 RPS, p95 <3s
+- Breaking point: ~100 users
+
+## Troubleshooting
+
+### High Failure Rate
+```bash
+# Check logs
+docker logs expo-smooth-mcp
+
+# Check rate limits
+redis-cli keys "fastapi-limiter:*"
+```
+
+### High Response Times
+```bash
+# Check resources
+docker stats expo-smooth-mcp
+
+# Profile application
+python -m cProfile main.py
+```
+
+### Connection Errors
+```bash
+# Increase connection limits
+ulimit -n 10000
+
+# Check server capacity
+netstat -an | grep 8000 | wc -l
+```
+```
+
+**Testing Checklist:**
+- [ ] Locust installed
+- [ ] locustfile.py created with user scenarios
+- [ ] ForecastUser class implements realistic behavior
+- [ ] AnonymousUser class covers public endpoints
+- [ ] locust.conf configuration file created
+- [ ] run_load_test.sh script created
+- [ ] All test scenarios implemented (smoke, standard, stress, spike)
+- [ ] LOAD_TESTING.md documentation created
+- [ ] Load tests executed on local
+- [ ] Load tests executed on production
+- [ ] HTML reports generated
+- [ ] Results analyzed
+
+**Acceptance Criteria:**
+- [ ] Locust load testing suite created
+- [ ] Realistic user behavior simulated
+- [ ] Multiple test scenarios available (smoke, standard, stress, spike)
+- [ ] Load test runner script works
+- [ ] Documentation complete with examples
+- [ ] Tests run successfully against local deployment
+- [ ] Tests run successfully against production
+- [ ] Failure rate below 1% under standard load
+- [ ] Breaking points identified
+- [ ] Ready to update ADRs (TASK-609)
+
+#### TASK-609: Update all ADRs with actual results
+**Estimated Time:** 1 hour | **Complexity:** Low | **Dependencies:** TASK-607, TASK-608
+
+**Description:**
+Update all Architectural Decision Records (ADRs) with actual benchmark results, performance metrics, lessons learned, and mark ADR-004 as "Accepted".
+
+**Implementation Steps:**
+
+### 1. Update ADR-004 (30 min)
+
+Update `ADRs/004-migration-to-fastmcp.md`:
+
+```markdown
+# ADR-004: Migration to FastMCP
+
+**Status:** Accepted  
+**Date:** 2025-10-13  
+**Deciders:** Development Team  
+**Technical Story:** FastMCP Migration
+
+## Context
+
+[Keep existing context section...]
+
+## Decision
+
+[Keep existing decision section...]
+
+## Performance Results
+
+### Benchmark Results (Actual)
+
+**Date Tested:** YYYY-MM-DD
+
+#### Local Deployment (Docker)
+
+| Endpoint | P50 | P95 | P99 | Throughput |
+|----------|-----|-----|-----|------------|
+| Health Check | X ms | X ms | X ms | X req/s |
+| Forecast API | X ms | X ms | X ms | X req/s |
+| Authentication | X ms | X ms | X ms | X req/s |
+
+#### Production Deployment (Fly.io)
+
+| Endpoint | P50 | P95 | P99 | Throughput |
+|----------|-----|-----|-----|------------|
+| Health Check | X ms | X ms | X ms | X req/s |
+| Forecast API | X ms | X ms | X ms | X req/s |
+| Authentication | X ms | X ms | X ms | X req/s |
+
+### Load Testing Results
+
+**Standard Load (50 concurrent users, 5 min):**
+- Requests/sec: X
+- Failure rate: X%
+- Average response time: X ms
+- P95 response time: X ms
+
+**Stress Test (200 concurrent users, 10 min):**
+- Breaking point: X users
+- Requests/sec: X
+- Failure rate: X%
+- Average response time: X ms
+
+### Performance Comparison
+
+| Metric | Expected | Actual | Status |
+|--------|----------|--------|--------|
+| Health p95 | <100ms | X ms | ✓ PASS |
+| Forecast p95 | <1000ms | X ms | ✓ PASS |
+| Throughput | >10 rps | X rps | ✓ PASS |
+| Error rate | <1% | X% | ✓ PASS |
+
+## Lessons Learned
+
+### What Went Well
+1. **FastMCP Integration**: Seamless integration with FastAPI
+2. **Dual Transport**: Both stdio and HTTP/SSE work reliably
+3. **Performance**: Meets all latency requirements
+4. **Documentation**: FastMCP documentation was comprehensive
+5. **Rate Limiting**: Redis-based limiting works effectively
+
+### Challenges Faced
+1. **Initial Setup**: Understanding stdio vs HTTP/SSE transport differences
+2. **Authentication**: Integrating JWT with MCP required custom middleware
+3. **Testing**: Limited MCP testing tools available
+4. **Docker Configuration**: stdio transport needed special configuration
+
+### Optimization Opportunities
+1. **Caching**: Add Redis caching for forecast results (30% latency reduction expected)
+2. **Workers**: Scale to 2-4 Uvicorn workers (2-4x throughput)
+3. **Precomputation**: Background forecast generation (90% latency reduction)
+4. **Compression**: Enable gzip (50% bandwidth savings)
+
+## Consequences
+
+[Keep existing consequences...]
+
+### Actual Outcomes (Post-Implementation)
+
+**Positive:**
+- ✓ All performance thresholds met
+- ✓ Dual deployment working (Docker + Fly.io)
+- ✓ Claude Desktop integration successful
+- ✓ Production-ready with monitoring
+- ✓ Zero downtime during migration
+- ✓ User feedback positive
+
+**Negative:**
+- Minor: Learning curve for MCP protocol
+- Minor: Limited MCP debugging tools
+- Mitigated: Custom logging added for MCP operations
+
+## Revision History
+
+- 2025-XX-XX: Created initial ADR
+- 2025-XX-XX: Added detailed implementation steps
+- 2025-YY-YY: **Updated with actual benchmark results**
+- 2025-YY-YY: **Status changed from "Proposed" to "Accepted"**
+```
+
+### 2. Update Other ADRs (20 min)
+
+Update `ADRs/001-use-exponential-smoothing-as-initial-model.md`:
+
+Add section:
+```markdown
+## Performance Validation
+
+**Benchmarked:** YYYY-MM-DD
+
+- Forecast generation time (p95): X ms
+- Model fitting time: X ms
+- Data loading time: X ms
+- Total API latency (p95): X ms
+
+✓ Meets requirement: <1 second response time
+```
+
+Update `ADRs/002-use-gradio-for-ui-and-mcp-server.md`:
+
+Add section:
+```markdown
+## Actual Implementation Results
+
+**Deployment Date:** YYYY-MM-DD
+
+### Gradio UI Usage
+- Mounted at `/gradio` successfully
+- Average load time: X ms
+- User feedback: Positive
+- Monthly active users: X
+
+### MCP Integration
+- Claude Desktop: ✓ Working
+- Cursor IDE: ✓ Working
+- VS Code: ✓ Working
+- Custom clients: ✓ Working
+
+### Performance
+- Gradio response time (p95): X ms
+- MCP tool latency (p95): X ms
+- No interference between services
+```
+
+Update `ADRs/003-select-fmcg-kaggle-dataset.md`:
+
+Add section:
+```markdown
+## Dataset Performance
+
+**Data Loading:**
+- Initial load time: X ms
+- Memory usage: X MB
+- CSV parsing time: X ms
+
+**Preprocessing:**
+- Transformation time: X ms
+- Cached in memory: Yes
+- Disk usage: X MB
+
+**Forecast Generation:**
+- Per SKU (90 days): X ms
+- All SKUs (90 days): X ms
+- 365 days forecast: X ms
+```
+
+### 3. Create ADR Summary (10 min)
+
+Create `ADRs/README.md`:
+
+```markdown
+# Architectural Decision Records
+
+This directory contains records of architectural decisions made during the development of Expo Smooth MCP Server.
+
+## ADR Index
+
+| ADR | Title | Status | Date |
+|-----|-------|--------|------|
+| [001](001-use-exponential-smoothing-as-initial-model.md) | Use Exponential Smoothing as Initial Model | Accepted | 2025-XX-XX |
+| [002](002-use-gradio-for-ui-and-mcp-server.md) | Use Gradio for UI and MCP Server | Accepted | 2025-XX-XX |
+| [003](003-select-fmcg-kaggle-dataset.md) | Select FMCG Kaggle Dataset | Accepted | 2025-XX-XX |
+| [004](004-migration-to-fastmcp.md) | Migration to FastMCP | Accepted | 2025-YY-YY |
+
+## ADR Status Legend
+
+- **Proposed**: Under consideration
+- **Accepted**: Approved and implemented
+- **Deprecated**: No longer relevant
+- **Superseded**: Replaced by another ADR
+
+## Performance Summary
+
+Based on actual benchmarks (YYYY-MM-DD):
+
+- ✓ All latency thresholds met
+- ✓ Throughput exceeds requirements
+- ✓ Error rate below 1%
+- ✓ Production deployment successful
+- ✓ Load testing passed
+
+See [BENCHMARK_REPORT.md](../docs/BENCHMARK_REPORT.md) for detailed results.
+
+## Lessons Learned
+
+1. FastMCP provides excellent performance and developer experience
+2. Dual deployment (Docker + Fly.io) works well for different use cases
+3. JWT + rate limiting essential for production
+4. Comprehensive documentation critical for adoption
+5. Load testing revealed optimization opportunities (caching, workers)
+
+## Next Steps
+
+- Implement forecast caching (30% latency improvement expected)
+- Scale to 2-4 Uvicorn workers
+- Add background precomputation
+- Monitor production metrics
+```
+
+**Testing Checklist:**
+- [ ] ADR-004 status updated to "Accepted"
+- [ ] ADR-004 updated with actual benchmark results
+- [ ] ADR-004 updated with load testing results
+- [ ] ADR-004 updated with lessons learned
+- [ ] ADR-001 updated with performance validation
+- [ ] ADR-002 updated with implementation results
+- [ ] ADR-003 updated with dataset performance
+- [ ] ADRs/README.md summary created
+- [ ] All ADRs have revision history updated
+- [ ] Performance metrics match BENCHMARK_REPORT.md
+
+**Acceptance Criteria:**
+- [ ] ADR-004 marked as "Accepted"
+- [ ] All ADRs updated with actual performance data
+- [ ] Benchmark results documented in ADRs
+- [ ] Load testing results documented
+- [ ] Lessons learned captured
+- [ ] Optimization opportunities identified
+- [ ] ADR summary index created
+- [ ] Revision history complete for all ADRs
+- [ ] Performance claims validated with data
+- [ ] Ready for final E2E testing (TASK-610)
 
 #### TASK-610: Final E2E testing checklist
-**Estimated Time:** 2 hours | **Complexity:** Medium | **Dependencies:** TASK-607
-**Description:** Execute comprehensive E2E test plan, document results, verify all acceptance criteria met.
+**Estimated Time:** 2 hours | **Complexity:** Medium | **Dependencies:** All previous tasks
+
+**Description:**
+Execute comprehensive end-to-end testing checklist to verify all features work correctly, all acceptance criteria met, and system is production-ready.
+
+**Implementation Steps:**
+
+### 1. Create E2E Testing Checklist (30 min)
+
+Create `docs/E2E_TESTING_CHECKLIST.md`:
+
+```markdown
+# End-to-End Testing Checklist
+
+## Pre-Testing Setup
+
+- [ ] Local environment running (Docker)
+- [ ] Production environment deployed (Fly.io)
+- [ ] Redis running and accessible
+- [ ] Test credentials available
+- [ ] All dependencies installed
+- [ ] Environment variables set
+
+## Phase 1: Core Logic Testing
+
+### Preprocessing
+- [ ] CSV data loads successfully
+- [ ] Data transformation completes without errors
+- [ ] All 5 SKUs available
+- [ ] Weekly sales data correctly formatted
+- [ ] Date ranges correct (2021-2023)
+
+### Forecasting
+- [ ] Holt-Winters model initializes
+- [ ] Forecast generation works for all SKUs
+- [ ] Different horizons work (30, 60, 90, 180, 365 days)
+- [ ] Custom parameters accepted (alpha, beta, gamma)
+- [ ] Performance metrics calculated (MAPE, RMSE, MAE)
+- [ ] Confidence intervals included
+- [ ] Results consistent across runs
+
+## Phase 2: FastMCP Backend Testing
+
+### Server Startup
+- [ ] FastMCP server starts without errors
+- [ ] FastAPI app mounts correctly
+- [ ] All routes registered
+- [ ] Swagger docs accessible at /docs
+- [ ] Health check returns 200 OK
+
+### MCP Tools
+- [ ] `generate_forecast` tool works
+- [ ] `list_products` tool returns all SKUs
+- [ ] `get_product_history` tool returns data
+- [ ] Tool descriptions clear
+- [ ] Input schemas validated
+- [ ] Error handling works
+
+### Stdio Transport (Local)
+- [ ] stdio server starts
+- [ ] Accepts JSON-RPC messages
+- [ ] Returns valid responses
+- [ ] Error messages formatted correctly
+
+### HTTP/SSE Transport (Production)
+- [ ] `/mcp/sse` endpoint accessible
+- [ ] Server-sent events stream works
+- [ ] Authentication required
+- [ ] Handles concurrent connections
+
+## Phase 3: Gradio UI Testing
+
+### UI Access
+- [ ] Gradio interface loads at /gradio
+- [ ] All components render correctly
+- [ ] No JavaScript errors
+
+### Functionality
+- [ ] SKU dropdown populated
+- [ ] Forecast horizon slider works
+- [ ] Parameter sliders work (alpha, beta, gamma)
+- [ ] "Generate Forecast" button functional
+- [ ] Loading indicator shows during generation
+- [ ] Results display correctly
+- [ ] Chart renders properly
+- [ ] Download button works
+
+### Edge Cases
+- [ ] Invalid SKU handled
+- [ ] Invalid parameters rejected
+- [ ] Empty inputs handled
+- [ ] Large horizons work (365 days)
+
+## Phase 4: Docker MCP Toolkit Testing
+
+### Local Deployment
+- [ ] `docker-mcp-toolkit start expo-smooth-mcp` works
+- [ ] Container starts successfully
+- [ ] Logs show no errors
+- [ ] Port 8000 accessible
+- [ ] stdio transport available
+
+### Claude Desktop Integration (stdio)
+- [ ] Config file in correct location
+- [ ] JSON syntax valid
+- [ ] Claude Desktop shows MCP tools
+- [ ] Tools execute successfully
+- [ ] Forecast generation works in Claude
+- [ ] Results formatted correctly
+- [ ] Error messages clear
+
+### Container Management
+- [ ] `docker-mcp-toolkit stop` works
+- [ ] `docker-mcp-toolkit restart` works
+- [ ] Container persists data
+- [ ] Logs accessible
+
+## Phase 5: Fly.io Deployment Testing
+
+### Deployment
+- [ ] `fly launch` completes
+- [ ] `fly deploy` succeeds
+- [ ] Secrets configured
+- [ ] App URL accessible
+- [ ] SSL certificate valid
+
+### Production Access
+- [ ] Root endpoint (/) works
+- [ ] /health returns healthy status
+- [ ] /docs accessible
+- [ ] /gradio loads
+- [ ] /mcp/sse endpoint works
+- [ ] /metrics endpoint available
+
+### Claude Desktop Integration (HTTP/SSE)
+- [ ] HTTP config valid
+- [ ] Authorization header accepted
+- [ ] MCP tools show in Claude
+- [ ] Tools execute remotely
+- [ ] Latency acceptable (<2s)
+
+## Phase 6: Authentication Testing
+
+### Token Generation
+- [ ] POST /token with valid credentials returns token
+- [ ] Invalid credentials return 401
+- [ ] Token format valid (JWT)
+- [ ] Token payload correct (username, exp)
+
+### Protected Endpoints
+- [ ] /api/forecast requires authentication
+- [ ] Valid token accepted
+- [ ] Invalid token rejected (401)
+- [ ] Expired token rejected (401)
+- [ ] Missing token rejected (401)
+- [ ] /users/me returns user info
+
+### Token Refresh
+- [ ] POST /token/refresh works
+- [ ] New token returned
+- [ ] Old token still valid until expiry
+
+## Phase 7: Rate Limiting Testing
+
+### Token Endpoint
+- [ ] 5 requests/min limit works
+- [ ] 6th request returns 429
+- [ ] Retry-After header present
+- [ ] Rate limit resets after 60s
+
+### Forecast Endpoint
+- [ ] 30 requests/min limit works (authenticated)
+- [ ] 31st request returns 429
+- [ ] Rate limit per user (not global)
+- [ ] Anonymous requests blocked
+
+### Public Endpoints
+- [ ] /health unlimited
+- [ ] /metrics unlimited
+- [ ] / has sensible limit
+
+## Phase 8: Logging & Monitoring Testing
+
+### Structured Logging
+- [ ] Logs written to stdout
+- [ ] JSON format
+- [ ] Includes timestamp, level, message
+- [ ] Request IDs tracked
+- [ ] Errors logged with stack traces
+- [ ] Forecast operations logged
+
+### Prometheus Metrics
+- [ ] /metrics endpoint works
+- [ ] http_requests_total counter works
+- [ ] forecast_requests_total counter works
+- [ ] http_request_duration_seconds histogram works
+- [ ] Labels correct (method, handler, status)
+
+### Health Checks
+- [ ] /health returns service status
+- [ ] Redis status included
+- [ ] All services show "healthy"
+- [ ] Unhealthy dependencies detected
+
+## Phase 9: API Testing
+
+### REST Endpoints
+- [ ] POST /api/forecast works
+- [ ] Request validation works
+- [ ] Response format correct
+- [ ] Error responses formatted correctly
+- [ ] Rate limiting enforced
+
+### MCP Endpoints
+- [ ] GET /mcp/sse accepts connections
+- [ ] SSE stream works
+- [ ] Tool calls execute
+- [ ] Responses valid JSON-RPC
+
+### Error Handling
+- [ ] 400 for invalid requests
+- [ ] 401 for unauthorized
+- [ ] 404 for not found
+- [ ] 422 for validation errors
+- [ ] 429 for rate limiting
+- [ ] 500 for server errors
+- [ ] Error messages helpful
+
+## Phase 10: Performance Testing
+
+### Latency
+- [ ] Health check p95 <100ms (local)
+- [ ] Health check p95 <200ms (prod)
+- [ ] Forecast p95 <1000ms (local)
+- [ ] Forecast p95 <2000ms (prod)
+
+### Throughput
+- [ ] Health >100 req/s (local)
+- [ ] Forecast >10 req/s (local)
+- [ ] Production throughput acceptable
+
+### Load Testing
+- [ ] 50 concurrent users handled
+- [ ] Error rate <1%
+- [ ] No memory leaks
+- [ ] No connection leaks
+
+## Phase 11: Documentation Testing
+
+### README
+- [ ] Quick start works
+- [ ] Installation steps correct
+- [ ] Examples run successfully
+- [ ] Links not broken
+
+### API Documentation
+- [ ] Swagger UI loads
+- [ ] All endpoints documented
+- [ ] Examples work
+- [ ] Try-it-out functionality works
+
+### Guides
+- [ ] DEPLOYMENT_GUIDE.md accurate
+- [ ] CLIENT_INTEGRATION_GUIDE.md works
+- [ ] TROUBLESHOOTING.md helpful
+- [ ] BENCHMARK_REPORT.md complete
+
+## Phase 12: Security Testing
+
+### Authentication
+- [ ] Passwords not logged
+- [ ] Tokens expire (30 min)
+- [ ] SECRET_KEY not exposed
+- [ ] HTTPS enforced (production)
+
+### Input Validation
+- [ ] SQL injection prevented (N/A - no SQL)
+- [ ] XSS prevented
+- [ ] Path traversal prevented
+- [ ] Oversized requests rejected
+
+### Rate Limiting
+- [ ] DDoS protection via rate limits
+- [ ] Per-user limits enforced
+- [ ] Redis authentication enabled (prod)
+
+## Phase 13: Integration Testing
+
+### Claude Desktop
+- [ ] Local stdio integration works
+- [ ] Production HTTP integration works
+- [ ] All tools accessible
+- [ ] Error handling graceful
+
+### Cursor IDE
+- [ ] MCP integration works
+- [ ] Config valid
+- [ ] Tools execute
+
+### VS Code
+- [ ] MCP extension works
+- [ ] Tools listed
+- [ ] Operations successful
+
+### Custom Clients
+- [ ] Python SDK example works
+- [ ] HTTP/SSE client works
+- [ ] JavaScript client works
+
+## Phase 14: Deployment Verification
+
+### Local (Docker)
+- [ ] Container healthy
+- [ ] All services running
+- [ ] Logs clean
+- [ ] Performance acceptable
+
+### Production (Fly.io)
+- [ ] App deployed
+- [ ] Health check passing
+- [ ] Metrics accessible
+- [ ] Logs streaming
+- [ ] No errors in logs
+- [ ] SSL working
+- [ ] Custom domain (if configured)
+
+## Final Checks
+
+### Code Quality
+- [ ] All tests passing
+- [ ] No linter errors
+- [ ] Type hints correct
+- [ ] Documentation complete
+
+### Project Completion
+- [ ] All 65 tasks completed
+- [ ] All acceptance criteria met
+- [ ] All documentation updated
+- [ ] Benchmark results documented
+- [ ] ADRs updated
+- [ ] Git history clean
+- [ ] README accurate
+
+### Production Readiness
+- [ ] Monitoring configured
+- [ ] Alerts set up (recommended)
+- [ ] Backup strategy (if needed)
+- [ ] Rollback plan documented
+- [ ] Support contacts listed
+- [ ] Runbook created (recommended)
+
+## Sign-Off
+
+**Tested By:** ________________  
+**Date:** ________________  
+**Status:** ☐ Pass  ☐ Fail  
+**Notes:**
+
+---
+
+**Production Deployment Approved:** ☐ Yes  ☐ No  
+**Approved By:** ________________  
+**Date:** ________________
+```
+
+### 2. Execute E2E Tests (60 min)
+
+```bash
+# Run through entire checklist
+# Document results in E2E_TESTING_RESULTS.md
+```
+
+### 3. Create Testing Results Document (20 min)
+
+Create `docs/E2E_TESTING_RESULTS.md`:
+
+```markdown
+# E2E Testing Results
+
+**Date:** YYYY-MM-DD  
+**Tester:** Your Name  
+**Duration:** X hours  
+**Overall Status:** ✓ PASS / ✗ FAIL
+
+## Summary
+
+- Total Checks: 200+
+- Passed: X
+- Failed: X
+- Pass Rate: X%
+
+## Test Execution
+
+### Phase 1: Core Logic - ✓ PASS
+All preprocessing and forecasting tests passed.
+
+### Phase 2: FastMCP Backend - ✓ PASS
+Server startup, MCP tools, and transports working.
+
+### Phase 3: Gradio UI - ✓ PASS
+UI loads and functions correctly.
+
+### Phase 4: Docker MCP Toolkit - ✓ PASS
+Local deployment and Claude integration working.
+
+### Phase 5: Fly.io Deployment - ✓ PASS
+Production deployment successful.
+
+### Phase 6: Authentication - ✓ PASS
+JWT authentication working correctly.
+
+### Phase 7: Rate Limiting - ✓ PASS
+All rate limits enforced.
+
+### Phase 8: Logging & Monitoring - ✓ PASS
+Logs and metrics working.
+
+### Phase 9: API Testing - ✓ PASS
+All endpoints functional.
+
+### Phase 10: Performance - ✓ PASS
+Meets all latency thresholds.
+
+### Phase 11: Documentation - ✓ PASS
+All documentation accurate.
+
+### Phase 12: Security - ✓ PASS
+Security measures in place.
+
+### Phase 13: Integration - ✓ PASS
+All client integrations working.
+
+### Phase 14: Deployment - ✓ PASS
+Both deployments verified.
+
+## Issues Found
+
+### Critical (Blocking)
+None
+
+### Major (Should Fix)
+None
+
+### Minor (Nice to Have)
+1. [Issue description]
+2. [Issue description]
+
+## Production Readiness Assessment
+
+✓ **READY FOR PRODUCTION**
+
+All critical functionality tested and working.
+All acceptance criteria met.
+Documentation complete and accurate.
+Performance meets requirements.
+
+## Sign-Off
+
+**Tested By:** Your Name  
+**Date:** YYYY-MM-DD  
+**Status:** ✓ PASS  
+
+**Production Deployment Approved:** ✓ YES  
+**Approved By:** Your Name  
+**Date:** YYYY-MM-DD
+```
+
+### 4. Final Project Validation (10 min)
+
+```bash
+# Validate all 65 tasks completed
+python scripts/validate_completion.py
+
+# Generate completion report
+python scripts/generate_completion_report.py
+```
+
+**Testing Checklist:**
+- [ ] E2E_TESTING_CHECKLIST.md created with 200+ checks
+- [ ] All 14 testing phases documented
+- [ ] Checklist executed completely
+- [ ] E2E_TESTING_RESULTS.md created
+- [ ] All issues documented
+- [ ] Production readiness assessed
+- [ ] Sign-off completed
+- [ ] All 65 project tasks verified complete
+- [ ] All acceptance criteria met
+- [ ] Documentation validated
+
+**Acceptance Criteria:**
+- [ ] Comprehensive E2E checklist created (200+ items)
+- [ ] All testing phases executed
+- [ ] Test results documented
+- [ ] All critical tests passing
+- [ ] Issues identified and prioritized
+- [ ] Production readiness confirmed
+- [ ] Formal sign-off obtained
+- [ ] All 65 tasks completed and verified
+- [ ] System ready for production deployment
+- [ ] **PROJECT COMPLETE** ✓
 
 ---
 
