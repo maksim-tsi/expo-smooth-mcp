@@ -79,7 +79,75 @@ mcp = FastMCP(
 PROCESSED_DF = None  # Will be loaded on startup
 
 # --- MCP Tools ---
-# (Will be added in TASK-204 and TASK-205)
+
+@mcp.tool()
+async def forecast_sku(
+    sku: str,
+    forecast_horizon: int = 90
+) -> Dict[str, Any]:
+    """
+    Generate sales forecast for a specific product SKU.
+
+    This tool uses Holt-Winters exponential smoothing to forecast future sales
+    based on historical data. The forecast includes trend and seasonality patterns.
+
+    Parameters:
+        sku: Product SKU code (e.g., "PRODUCT_123")
+             Use list_available_skus tool to see all valid SKUs
+        forecast_horizon: Number of days to forecast ahead (default: 90)
+                         Must be between 1 and 365 days
+
+    Returns:
+        Dictionary with forecast data:
+        {
+            "dates": ["2025-01-01", "2025-01-02", ...],
+            "actuals": [100.0, 105.0, None, None, ...],
+            "forecast": [102.0, 107.0, 110.0, 115.0, ...],
+            "metadata": {
+                "sku": "PRODUCT_123",
+                "forecast_horizon": 90,
+                "historical_points": 365,
+                "forecast_points": 90
+            }
+        }
+
+    Example:
+        result = await forecast_sku("PRODUCT_123", 90)
+        print(f"Generated {len(result['forecast'])} forecast points")
+
+    Raises:
+        ValueError: If SKU not found or horizon out of valid range
+        RuntimeError: If data failed to load on startup
+    """
+    # Check if data is loaded
+    if PROCESSED_DF is None:
+        raise RuntimeError(
+            "Data not loaded. Server started without valid dataset. "
+            "Check server logs for startup errors."
+        )
+
+    try:
+        # Validate inputs
+        valid_skus = logic.get_available_skus(PROCESSED_DF)
+        logic.validate_forecast_request(sku, forecast_horizon, valid_skus)
+
+        # Generate forecast
+        forecast_data = logic.get_forecast_data(
+            PROCESSED_DF,
+            sku,
+            forecast_horizon
+        )
+
+        return forecast_data
+
+    except ValueError as e:
+        # Re-raise validation errors with context
+        raise ValueError(f"Forecast validation failed: {str(e)}")
+
+    except Exception as e:
+        # Log unexpected errors
+        print(f"ERROR in forecast_sku: {e}")
+        raise RuntimeError(f"Forecast generation failed: {str(e)}")
 
 # --- REST API Endpoints ---
 # (Will be added in TASK-207, TASK-208, TASK-210)
