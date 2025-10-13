@@ -172,14 +172,54 @@ def validate_forecast_request(
     
     return None
 
-def get_processed_data() -> pd.DataFrame:
+def get_processed_data(
+    data_path: str = 'FMCG_Sales.csv',
+    force_reload: bool = False
+) -> pd.DataFrame:
     """
-    Get preprocessed data, loading it once and caching.
+    Load and preprocess FMCG sales data with singleton pattern.
     
+    Data is loaded once and cached in module-level variable.
+    Subsequent calls return cached data for performance.
+    
+    Args:
+        data_path: Path to raw CSV file (default: 'FMCG_Sales.csv')
+        force_reload: If True, reload data even if cached (for testing)
+        
     Returns:
-        Preprocessed DataFrame
+        Preprocessed DataFrame with MultiIndex (date, sku)
         
     Raises:
-        RuntimeError: If data fails to load
+        FileNotFoundError: If data_path doesn't exist
+        ValueError: If data fails validation after preprocessing
+        
+    Example:
+        >>> df = get_processed_data()  # Loads and caches
+        >>> df = get_processed_data()  # Returns cached (instant)
+        >>> df = get_processed_data(force_reload=True)  # Reloads
     """
-    pass
+    global _cached_data
+    
+    # Return cached data if available
+    if _cached_data is not None and not force_reload:
+        return _cached_data
+    
+    # Load and preprocess data
+    try:
+        raw_df = pd.read_csv(data_path)
+        processed_df = preprocess_data(raw_df.copy())
+        
+        # Validate result
+        if processed_df.empty:
+            raise ValueError("Preprocessing resulted in empty DataFrame")
+        
+        # Cache and return
+        _cached_data = processed_df
+        print(f"Successfully loaded and cached data from {data_path}")
+        return _cached_data
+        
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"Data file not found: {data_path}. "
+            "Please ensure FMCG_Sales.csv is in the root directory."
+        )
