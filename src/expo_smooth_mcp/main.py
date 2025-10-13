@@ -188,7 +188,13 @@ async def list_available_skus() -> List[str]:
 # (Will be added in TASK-207, TASK-208, TASK-210)
 
 # --- Mount MCP Server ---
-# (Will be added in TASK-206)
+
+# Mount MCP server as ASGI sub-application at /mcp endpoint
+# This exposes MCP tools via HTTP/SSE transport for remote clients
+# Local stdio transport is handled separately in main block
+app.mount("/mcp", mcp.sse_app())
+
+print(f"✓ Mounted MCP server at /mcp with SSE transport")
 
 # --- Startup Event ---
 
